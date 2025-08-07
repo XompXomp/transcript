@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [micStatuses, setMicStatuses] = useState<Map<string, { isConnected: boolean; status: string }>>(new Map());
   const [micTranscripts, setMicTranscripts] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const sttEndpoints: STTEndpoint[] = [
     {
@@ -233,34 +234,41 @@ const App: React.FC = () => {
           }
         };
         
-        // Handle STT responses
-        connection.onmessage = (event) => {
-          try {
-            if (event.data instanceof Blob) {
-              event.data.arrayBuffer().then(buffer => {
-                const uint8Array = new Uint8Array(buffer);
-                const data = msgpack.decode(uint8Array);
-                
-                if (data.type === 'Word' && data.text) {
-                  transcript += (transcript ? ' ' : '') + data.text;
-                  setMicTranscripts(prev => new Map(prev).set(micId, transcript));
-                }
-              });
+        // Handle STT responses - only set if not already set
+        if (!connection.onmessage) {
+          connection.onmessage = (event) => {
+            try {
+              if (event.data instanceof Blob) {
+                event.data.arrayBuffer().then(buffer => {
+                  const uint8Array = new Uint8Array(buffer);
+                  const data = msgpack.decode(uint8Array);
+                  
+                  if (data.type === 'Word' && data.text) {
+                    setMicTranscripts(prev => {
+                      const currentTranscript = prev.get(micId) || '';
+                      const newTranscript = currentTranscript + (currentTranscript ? ' ' : '') + data.text;
+                      return new Map(prev).set(micId, newTranscript);
+                    });
+                  }
+                });
+              }
+            } catch (e) {
+              console.error('Error processing STT message:', e);
             }
-          } catch (e) {
-            console.error('Error processing STT message:', e);
-          }
-        };
+          };
+        }
         
         source.connect(processor);
         processor.connect(audioContext.destination);
         
-        // Store the processor for cleanup
+        // Store the processor and stream for cleanup
         setMicConnections(prev => {
           const newMap = new Map(prev);
           const connection = newMap.get(micId);
           if (connection) {
             (connection as any).processor = processor;
+            (connection as any).stream = stream;
+            (connection as any).audioContext = audioContext;
           }
           return newMap;
         });
@@ -279,10 +287,25 @@ const App: React.FC = () => {
 
   const stopRecording = async (micId: string) => {
     const connection = micConnections.get(micId);
-    if (connection && (connection as any).processor) {
-      const processor = (connection as any).processor;
-      processor.disconnect();
-      (connection as any).processor = null;
+    if (connection) {
+      // Clean up audio resources
+      if ((connection as any).processor) {
+        const processor = (connection as any).processor;
+        processor.disconnect();
+        (connection as any).processor = null;
+      }
+      
+      if ((connection as any).stream) {
+        const stream = (connection as any).stream;
+        stream.getTracks().forEach((track: any) => track.stop());
+        (connection as any).stream = null;
+      }
+      
+      if ((connection as any).audioContext) {
+        const audioContext = (connection as any).audioContext;
+        audioContext.close();
+        (connection as any).audioContext = null;
+      }
     }
     
     const transcript = micTranscripts.get(micId);
@@ -300,14 +323,16 @@ const App: React.FC = () => {
             timestamp: new Date().toISOString()
           });
           
-          // Clear the transcript
-          setMicTranscripts(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(micId);
-            return newMap;
-          });
-          
-          alert('Transcript saved successfully!');
+                     // Clear the transcript
+           setMicTranscripts(prev => {
+             const newMap = new Map(prev);
+             newMap.delete(micId);
+             return newMap;
+           });
+           
+           // Show success message
+           setSuccessMessage('Transcript saved successfully!');
+           setTimeout(() => setSuccessMessage(null), 3000); // Auto-hide after 3 seconds
         } catch (error) {
           console.error('Error saving transcript:', error);
           alert('Error saving transcript');
@@ -464,6 +489,20 @@ const App: React.FC = () => {
       padding: 20,
       fontFamily: 'Arial, sans-serif'
     }}>
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -491,10 +530,30 @@ const App: React.FC = () => {
         >
           📝 View Transcript History
         </button>
-      </div>
-      
-      {/* Add Mic Button */}
-      <div style={{ marginBottom: 20 }}>
+             </div>
+       
+       {/* Success Message */}
+       {successMessage && (
+         <div style={{
+           position: 'fixed',
+           top: 20,
+           right: 20,
+           background: '#4caf50',
+           color: 'white',
+           padding: '12px 20px',
+           borderRadius: 6,
+           fontSize: 14,
+           fontWeight: 'bold',
+           zIndex: 1000,
+           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+           animation: 'slideIn 0.3s ease-out'
+         }}>
+           ✅ {successMessage}
+         </div>
+       )}
+       
+       {/* Add Mic Button */}
+       <div style={{ marginBottom: 20 }}>
         <button
           onClick={addMic}
           style={{
