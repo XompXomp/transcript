@@ -4,21 +4,24 @@ const http = require('http');
 // Create WebSocket server for second endpoint
 const wss = new WebSocket.Server({ port: 8031 });
 
-console.log('STT Proxy Server 2 running on ws://localhost:8031');
+console.log('🚀 STT Proxy Server 2 started on ws://localhost:8031');
+console.log('📡 Connecting to STT Server: Ankur Laptop');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
 wss.on('connection', (ws) => {
-  console.log('Client connected to proxy 2');
+  const clientId = Math.random().toString(36).substr(2, 9);
+  console.log(`🔌 [Proxy 2] Client ${clientId} connected to proxy`);
   
   // Connect to second STT server with authentication headers
-  const sttWs = new WebSocket('ws://172.22.225.139:11004/api/asr-streaming', {
+  const sttWs = new WebSocket('ws://172.22.225.47:11000/api/asr-streaming', {
     headers: {
       'kyutai-api-key': 'public_token'
     }
   });
   
   sttWs.on('open', () => {
-    console.log('Connected to STT server 2');
-    console.log('Number of clients connected to proxy 2:', wss.clients.size);
+    console.log(`✅ [Proxy 2] Client ${clientId} connected to STT Server 2 (Ankur laptop)`);
+    console.log(`📊 [Proxy 2] Total clients connected: ${wss.clients.size}`);
   });
   
   sttWs.on('message', (data) => {
@@ -29,12 +32,12 @@ wss.on('connection', (ws) => {
   });
   
   sttWs.on('error', (error) => {
-    console.error('STT server 2 error:', error);
+    console.error(`❌ [Proxy 2] Client ${clientId} STT server error:`, error);
     ws.close();
   });
   
   sttWs.on('close', () => {
-    console.log('STT server 2 connection closed');
+    console.log(`🔌 [Proxy 2] Client ${clientId} STT server connection closed`);
     ws.close();
   });
   
@@ -46,12 +49,12 @@ wss.on('connection', (ws) => {
   });
   
   ws.on('close', () => {
-    console.log('Client disconnected from proxy 2');
+    console.log(`🔌 [Proxy 2] Client ${clientId} disconnected`);
     sttWs.close();
   });
   
   ws.on('error', (error) => {
-    console.error('Client error on proxy 2:', error);
+    console.error(`❌ [Proxy 2] Client ${clientId} error:`, error);
     sttWs.close();
   });
 }); 

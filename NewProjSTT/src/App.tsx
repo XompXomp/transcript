@@ -39,12 +39,17 @@ const App: React.FC = () => {
       const allMics = await databaseService.getAllMics();
       setMics(allMics);
       
-      // Initialize status for all mics
-      const newStatuses = new Map();
-      allMics.forEach(mic => {
-        newStatuses.set(mic.micId, { isConnected: false, status: 'Disconnected' });
+      // Preserve existing statuses and only initialize new mics
+      setMicStatuses(prev => {
+        const newStatuses = new Map(prev);
+        allMics.forEach(mic => {
+          if (!newStatuses.has(mic.micId)) {
+            // Only initialize status for new mics
+            newStatuses.set(mic.micId, { isConnected: false, status: 'Disconnected' });
+          }
+        });
+        return newStatuses;
       });
-      setMicStatuses(newStatuses);
     } catch (error) {
       console.error('Error loading mics:', error);
     }
@@ -73,7 +78,20 @@ const App: React.FC = () => {
       return null;
     }
 
-    const proxyUrl = `ws://localhost:8030`;
+    // Map endpoint to proxy port
+    const getProxyPortForEndpoint = (endpointId: string): number => {
+      switch (endpointId) {
+        case 'endpoint1':
+          return 8030;
+        case 'endpoint2':
+          return 8031;
+        default:
+          return 8030;
+      }
+    };
+
+    const proxyPort = getProxyPortForEndpoint(mic.sttEndpoint);
+    const proxyUrl = `ws://localhost:${proxyPort}`;
     
     return new Promise<WebSocket>((resolve, reject) => {
       const ws = new WebSocket(proxyUrl);
@@ -133,7 +151,16 @@ const App: React.FC = () => {
 
     try {
       const micId = await databaseService.addMic(newMic);
-      await loadMics();
+      // Add the new mic to state without reloading all mics
+      const addedMic = await databaseService.getMic(micId);
+      if (addedMic) {
+        setMics(prev => [...prev, addedMic]);
+        // Initialize status for the new mic
+        setMicStatuses(prev => new Map(prev).set(micId, { 
+          isConnected: false, 
+          status: 'Disconnected' 
+        }));
+      }
     } catch (error) {
       console.error('Error adding mic:', error);
       alert('Error adding microphone');
@@ -143,7 +170,10 @@ const App: React.FC = () => {
   const updateMic = async (micId: string, updates: Partial<MicConfig>) => {
     try {
       await databaseService.updateMic(micId, updates);
-      await loadMics();
+      // Update the mic in state without reloading all mics
+      setMics(prev => prev.map(mic => 
+        mic.micId === micId ? { ...mic, ...updates } : mic
+      ));
     } catch (error) {
       console.error('Error updating mic:', error);
     }
@@ -153,7 +183,27 @@ const App: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this microphone?')) {
       try {
         await databaseService.deleteMic(micId);
-        await loadMics();
+        // Remove the mic from state and clean up connections
+        setMics(prev => prev.filter(mic => mic.micId !== micId));
+        setMicStatuses(prev => {
+          const newStatuses = new Map(prev);
+          newStatuses.delete(micId);
+          return newStatuses;
+        });
+        setMicConnections(prev => {
+          const newConnections = new Map(prev);
+          const connection = newConnections.get(micId);
+          if (connection) {
+            connection.close();
+            newConnections.delete(micId);
+          }
+          return newConnections;
+        });
+        setMicTranscripts(prev => {
+          const newTranscripts = new Map(prev);
+          newTranscripts.delete(micId);
+          return newTranscripts;
+        });
       } catch (error) {
         console.error('Error deleting mic:', error);
       }
