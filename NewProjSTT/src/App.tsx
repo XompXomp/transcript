@@ -676,56 +676,71 @@ const App: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Table ID */}
-                <div>
-                  <input
-                    type="text"
-                    value={mic.tableId}
-                    onChange={(e) => updateMic(mic.micId, { tableId: e.target.value })}
-                    placeholder="Table ID"
-                    style={{
-                      width: '100%',
-                      padding: '6px',
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      fontSize: 12
-                    }}
-                  />
-                </div>
+                                 {/* Table ID */}
+                 <div>
+                   <select
+                     value={mic.tableId}
+                     onChange={(e) => updateMic(mic.micId, { tableId: e.target.value })}
+                     style={{
+                       width: '100%',
+                       padding: '6px',
+                       borderRadius: 4,
+                       border: '1px solid #ddd',
+                       fontSize: 12
+                     }}
+                   >
+                                           <option value="">Select Table...</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                   </select>
+                 </div>
 
-                {/* Topic ID */}
-                <div>
-                  <input
-                    type="text"
-                    value={mic.topicId}
-                    onChange={(e) => updateMic(mic.micId, { topicId: e.target.value })}
-                    placeholder="Topic ID"
-                    style={{
-                      width: '100%',
-                      padding: '6px',
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      fontSize: 12
-                    }}
-                  />
-                </div>
+                                 {/* Topic ID */}
+                 <div>
+                   <select
+                     value={mic.topicId}
+                     onChange={(e) => updateMic(mic.micId, { topicId: e.target.value })}
+                     style={{
+                       width: '100%',
+                       padding: '6px',
+                       borderRadius: 4,
+                       border: '1px solid #ddd',
+                       fontSize: 12
+                     }}
+                   >
+                                           <option value="">Select Topic ID...</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                   </select>
+                 </div>
 
-                {/* Topic Name */}
-                <div>
-                  <input
-                    type="text"
-                    value={mic.topicName}
-                    onChange={(e) => updateMic(mic.micId, { topicName: e.target.value })}
-                    placeholder="Topic Name"
-                    style={{
-                      width: '100%',
-                      padding: '6px',
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      fontSize: 12
-                    }}
-                  />
-                </div>
+                                 {/* Topic Name */}
+                 <div>
+                   <select
+                     value={mic.topicName}
+                     onChange={(e) => updateMic(mic.micId, { topicName: e.target.value })}
+                     style={{
+                       width: '100%',
+                       padding: '6px',
+                       borderRadius: 4,
+                       border: '1px solid #ddd',
+                       fontSize: 12
+                     }}
+                   >
+                     <option value="">Select Topic Name...</option>
+                     <option value="Topic NameOne">Topic NameOne</option>
+                     <option value="Topic NameTwo">Topic NameTwo</option>
+                     <option value="Topic NameThree">Topic NameThree</option>
+                     <option value="Topic NameFour">Topic NameFour</option>
+                     <option value="Topic NameFive">Topic NameFive</option>
+                   </select>
+                 </div>
 
                 {/* STT Endpoint */}
                 <div>
