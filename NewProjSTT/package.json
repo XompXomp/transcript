@@ -1,0 +1,25 @@
+{
+  "name": "stt-transcription-app",
+  "version": "1.0.0",
+  "description": "A simple app that transcribes audio to text using Unmute STT",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "proxy": "node stt-proxy.js"
+  },
+  "dependencies": {
+    "msgpack-lite": "^0.1.26",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0"
+  }
+}
