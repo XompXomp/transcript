@@ -439,41 +439,48 @@ const App: React.FC = () => {
         return;
       }
 
-      // Create a simple HTML page with the transcript data
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Transcript History Viewer</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-            .controls { display: flex; gap: 10px; }
-            button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-            .refresh { background: #4caf50; }
-            .export { background: #2196f3; }
-            .clear { background: #f44336; }
-            .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; }
-            .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-            .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
-            .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>📝 Transcript History Viewer</h1>
-              <div class="controls">
-                <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
-                <button class="export" onclick="exportData()">📥 Export JSON</button>
-                <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
-              </div>
-            </div>
+             // Create a simple HTML page with the transcript data
+       const htmlContent = `
+         <!DOCTYPE html>
+         <html>
+         <head>
+           <title>Transcript History Viewer</title>
+           <style>
+             body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+             .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+             .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+             .controls { display: flex; gap: 10px; }
+             button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+             .refresh { background: #4caf50; }
+             .export { background: #2196f3; }
+             .send { background: #ff9800; }
+             .clear { background: #f44336; }
+             .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; }
+             .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+             .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
+             .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+             .status { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; }
+             .status.success { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
+             .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+           </style>
+         </head>
+         <body>
+           <div class="container">
+             <div class="header">
+               <h1>📝 Transcript History Viewer</h1>
+               <div class="controls">
+                 <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
+                 <button class="export" onclick="exportData()">📥 Export JSON</button>
+                 <button class="send" onclick="sendToAPI()">📤 Send to API</button>
+                 <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
+               </div>
+             </div>
             
-            <div class="summary">
-              <strong>Summary:</strong> Total transcripts: ${transcripts.length}
-            </div>
+                         <div class="summary">
+               <strong>Summary:</strong> Total transcripts: ${transcripts.length}
+             </div>
+             
+             <div id="status" class="status"></div>
             
             <div id="transcripts">
               ${transcripts.map((t: any) => `
@@ -493,27 +500,79 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <script>
-            function exportData() {
-              const data = ${JSON.stringify(transcripts)};
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }
-            
-            function clearAll() {
-              if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
-                localStorage.removeItem('sttDatabase');
-                alert('All transcripts cleared. Please close this window and refresh the main application.');
+                     <script>
+             function exportData() {
+               const data = ${JSON.stringify(transcripts)};
+               const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+               const url = URL.createObjectURL(blob);
+               const a = document.createElement('a');
+               a.href = url;
+               a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
+               document.body.appendChild(a);
+               a.click();
+               document.body.removeChild(a);
+               URL.revokeObjectURL(url);
+             }
+             
+                           async function sendToAPI() {
+                const statusDiv = document.getElementById('status');
+                const data = ${JSON.stringify(transcripts)};
+                
+                // Debug: Log what we're sending
+                console.log('Sending to API:', data);
+                console.log('Data structure:', data[0] ? Object.keys(data[0]) : 'No data');
+                
+                try {
+                  statusDiv.textContent = '📤 Sending transcripts to API...';
+                  statusDiv.className = 'status';
+                  statusDiv.style.display = 'block';
+                  
+                  const endpoint = 'http://172.22.225.47:8006/transcripts/batch';
+                  
+                  // Convert to snake_case format (as shown in the error)
+                  const snakeCaseData = data.map(t => ({
+                    id: t.id,
+                    mic_id: t.micId,
+                    zone_id: t.zoneId,
+                    table_id: t.tableId,
+                    topic_id: t.topicId,
+                    topic_name: t.topicName,
+                    transcript: t.transcript,
+                    timestamp: t.timestamp
+                  }));
+                  
+                  const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(snakeCaseData)
+                  });
+                  
+                  if (response.ok) {
+                    const result = await response.json();
+                    statusDiv.textContent = '✅ Successfully sent ' + data.length + ' transcripts to API!';
+                    statusDiv.className = 'status success';
+                    console.log('API Response:', result);
+                  } else {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText + ' - ' + errorText);
+                  }
+                } catch (error) {
+                  statusDiv.textContent = '❌ Error sending to API: ' + error.message;
+                  statusDiv.className = 'status error';
+                  console.error('API Error:', error);
+                }
               }
-            }
-          </script>
+             
+             function clearAll() {
+               if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
+                 localStorage.removeItem('sttDatabase');
+                 alert('All transcripts cleared. Please close this window and refresh the main application.');
+               }
+             }
+           </script>
         </body>
         </html>
       `;
