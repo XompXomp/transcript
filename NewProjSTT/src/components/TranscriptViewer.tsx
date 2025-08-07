@@ -1,0 +1,234 @@
+import React, { useState, useEffect } from 'react';
+import { Transcript, MicConfig } from '../types';
+import { databaseService } from '../databaseService';
+
+interface TranscriptViewerProps {
+  selectedMicId?: string;
+}
+
+const TranscriptViewer: React.FC<TranscriptViewerProps> = ({ selectedMicId }) => {
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+  const [mics, setMics] = useState<MicConfig[]>([]);
+  const [filterMicId, setFilterMicId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    loadMics();
+    loadTranscripts();
+  }, [filterMicId]);
+
+  useEffect(() => {
+    if (selectedMicId) {
+      setFilterMicId(selectedMicId);
+    }
+  }, [selectedMicId]);
+
+  const loadMics = async () => {
+    try {
+      const allMics = await databaseService.getAllMics();
+      setMics(allMics);
+    } catch (error) {
+      console.error('Error loading mics:', error);
+    }
+  };
+
+  const loadTranscripts = async () => {
+    setIsLoading(true);
+    try {
+      let allTranscripts: Transcript[];
+      if (filterMicId) {
+        allTranscripts = await databaseService.getTranscriptsByMicId(filterMicId);
+      } else {
+        allTranscripts = await databaseService.getAllTranscripts();
+      }
+      setTranscripts(allTranscripts);
+    } catch (error) {
+      console.error('Error loading transcripts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportTranscripts = () => {
+    const dataStr = JSON.stringify(transcripts, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transcripts_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString();
+  };
+
+  const getMicName = (micId: string) => {
+    const mic = mics.find(m => m.micId === micId);
+    return mic ? mic.deviceName : `Mic ${micId.slice(-8)}`;
+  };
+
+  return (
+    <div style={{ marginBottom: 30 }}>
+      <h2 style={{ marginBottom: 20, color: '#333' }}>Transcript Viewer</h2>
+      
+      {/* Filters */}
+      <div style={{
+        background: '#f9f9f9',
+        padding: 15,
+        borderRadius: 8,
+        marginBottom: 20,
+        border: '1px solid #ddd',
+        display: 'flex',
+        gap: 15,
+        alignItems: 'center'
+      }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>
+            Filter by Microphone:
+          </label>
+          <select
+            value={filterMicId}
+            onChange={(e) => setFilterMicId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: 8,
+              borderRadius: 4,
+              border: '1px solid #ddd'
+            }}
+          >
+            <option value="">All Microphones</option>
+            {mics.map(mic => (
+              <option key={mic.micId} value={mic.micId}>
+                {mic.deviceName} (Zone {mic.zoneId}, Table {mic.tableId})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleExportTranscripts}
+          disabled={transcripts.length === 0}
+          style={{
+            background: '#2196f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            padding: '10px 20px',
+            cursor: transcripts.length > 0 ? 'pointer' : 'not-allowed',
+            opacity: transcripts.length > 0 ? 1 : 0.5
+          }}
+        >
+          📥 Export JSON
+        </button>
+      </div>
+
+      {/* Transcripts List */}
+      <div>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+            Loading transcripts...
+          </div>
+        ) : transcripts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#666', fontStyle: 'italic' }}>
+            {filterMicId ? 'No transcripts found for this microphone.' : 'No transcripts found.'}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 15 }}>
+            {transcripts.map(transcript => (
+              <div
+                key={transcript.id}
+                style={{
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  padding: 20,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 15,
+                  paddingBottom: 10,
+                  borderBottom: '1px solid #eee'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 5 }}>
+                      {getMicName(transcript.micId)}
+                    </div>
+                    <div style={{ fontSize: 14, color: '#666' }}>
+                      Zone {transcript.zoneId} | Table {transcript.tableId} | Topic: {transcript.topicName}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12, color: '#888' }}>
+                    {formatTimestamp(transcript.timestamp)}
+                  </div>
+                </div>
+
+                {/* Transcript Content */}
+                <div style={{
+                  background: '#f8f9fa',
+                  padding: 15,
+                  borderRadius: 6,
+                  border: '1px solid #e9ecef',
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  maxHeight: 200,
+                  overflowY: 'auto'
+                }}>
+                  {transcript.transcript || '(Empty transcript)'}
+                </div>
+
+                {/* Metadata */}
+                <div style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: '#888',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span>ID: {transcript.id.slice(-8)}</span>
+                  {transcript.duration && (
+                    <span>Duration: {transcript.duration.toFixed(1)}s</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Summary */}
+      {transcripts.length > 0 && (
+        <div style={{
+          background: '#e3f2fd',
+          padding: 15,
+          borderRadius: 8,
+          marginTop: 20,
+          border: '1px solid #2196f3'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 5 }}>
+            Summary
+          </div>
+          <div style={{ fontSize: 14, color: '#666' }}>
+            Total transcripts: {transcripts.length}
+            {filterMicId && (
+              <span> | Filtered by: {getMicName(filterMicId)}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TranscriptViewer; 

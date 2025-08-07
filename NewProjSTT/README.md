@@ -1,68 +1,222 @@
-# STT Transcription App
+# Multi-Microphone STT Transcription System
 
-A simple React application that connects to Unmute STT server, records audio from your microphone, and continuously saves transcribed text to files.
+A comprehensive speech-to-text transcription system that supports multiple microphones, multiple STT endpoints, and persistent storage of transcripts.
 
 ## Features
 
-- 🎤 Real-time audio recording with microphone
-- 🔗 WebSocket connection to Unmute STT server
-- 📝 Live transcription display
-- 💾 Automatic file saving for each completed sentence
-- 📥 Download complete transcription
-- 🗑️ Clear transcription history
-- ⏱️ Timestamped entries
+- **Multiple Microphone Support**: Configure and manage up to 36 different microphones
+- **Multiple STT Endpoints**: Connect to different STT servers for load balancing
+- **Device Selection**: Automatic detection and selection of available audio input devices
+- **Zone Management**: Organize microphones by zones (1-4)
+- **Database Storage**: Persistent storage of mic configurations and transcripts
+- **Real-time Status**: Live connection status for each microphone
+- **Transcript Management**: View, filter, and export transcripts
 
-## Prerequisites
+## Database Structure
 
-1. **Unmute STT Server**: Make sure you have the Unmute STT server running on `ws://localhost:8080`
-2. **Node.js**: Version 16 or higher
-3. **Microphone permissions**: Browser must have access to microphone
+The system stores data in a JSON format with the following structure:
 
-## Installation
+```json
+{
+  "mics": [
+    {
+      "micId": "auto-generated-unique-id",
+      "deviceId": "browser-device-id",
+      "deviceName": "Microphone Name",
+      "zoneId": 1-4,
+      "tableId": "user-assigned",
+      "topicId": "user-assigned",
+      "topicName": "user-assigned",
+      "sttEndpoint": "endpoint1|endpoint2",
+      "isActive": true/false
+    }
+  ],
+  "transcripts": [
+    {
+      "id": "auto-generated-unique-id",
+      "micId": "reference-to-mic",
+      "zoneId": 1-4,
+      "tableId": "table-id",
+      "topicId": "topic-id",
+      "topicName": "topic-name",
+      "transcript": "actual transcribed text",
+      "timestamp": "ISO-timestamp",
+      "duration": "optional-duration"
+    }
+  ]
+}
+```
 
-1. Install dependencies:
+## Setup Instructions
+
+### 1. Install Dependencies
+
 ```bash
 npm install
 ```
 
-2. Start the development server:
+### 2. Configure STT Endpoints
+
+Edit the STT endpoints in `src/components/MicConfiguration.tsx`:
+
+```typescript
+const sttEndpoints: STTEndpoint[] = [
+  {
+    id: 'endpoint1',
+    name: 'STT Server 1',
+    url: 'ws://your-stt-server-1:port/api/asr-streaming',
+    apiKey: 'your-api-key-1'
+  },
+  {
+    id: 'endpoint2',
+    name: 'STT Server 2',
+    url: 'ws://your-stt-server-2:port/api/asr-streaming',
+    apiKey: 'your-api-key-2'
+  }
+];
+```
+
+### 3. Start STT Proxy Servers
+
+Start both proxy servers:
+
+```bash
+npm run proxies
+```
+
+Or start them individually:
+
+```bash
+# Terminal 1
+npm run proxy
+
+# Terminal 2
+npm run proxy2
+```
+
+### 4. Start the Application
+
 ```bash
 npm run dev
 ```
 
-3. Open your browser and navigate to `http://localhost:3000`
+## Usage
 
-## How to Use
+### 1. Configuration Tab
 
-1. **Start Recording**: Click the microphone button (🎤) to begin recording
-2. **Speak**: Talk clearly into your microphone
-3. **Auto-Save**: Each completed sentence will automatically be saved to a text file
-4. **Stop Recording**: Click the stop button (⏹️) to end recording
-5. **Download All**: Use the "Download All" button to get the complete transcription
-6. **Clear**: Use the "Clear" button to reset the transcription
+1. **Add Microphones**:
+   - Select an audio input device from the dropdown
+   - Assign Zone ID (1-4)
+   - Enter Table ID, Topic ID, and Topic Name
+   - Select STT endpoint
+   - Click "Add Microphone"
 
-## File Output
+2. **Manage Microphones**:
+   - View all configured microphones
+   - Activate/deactivate microphones
+   - Delete microphone configurations
 
-- **Individual sentences**: Each completed sentence is saved as a separate file with timestamp
-- **Complete transcription**: All transcriptions are saved in one file when using "Download All"
-- **File naming**: Files include timestamps for easy identification
+### 2. Recording Tab
 
-## Technical Details
+1. **Start Recording**:
+   - Only active microphones appear here
+   - Click the microphone button to start recording
+   - Live transcript appears below each mic
+   - Click again to stop recording and save transcript
 
-- Uses Web Audio API for raw PCM audio capture
-- Connects to Unmute STT server via WebSocket
-- Uses MessagePack for binary data encoding
-- Sentence completion detection with 2-second timeout
-- Real-time transcription display
+2. **Status Monitoring**:
+   - Green border = Connected to STT server
+   - Red border = Connection error
+   - Status text shows current state
+
+### 3. Transcripts Tab
+
+1. **View Transcripts**:
+   - Filter by specific microphone
+   - View all transcripts with metadata
+   - Export transcripts as JSON
+
+## Architecture
+
+### Frontend Components
+
+- **App.tsx**: Main application with navigation and state management
+- **MicConfiguration.tsx**: Microphone setup and management
+- **TranscriptViewer.tsx**: Transcript viewing and export
+- **databaseService.ts**: Database operations
+- **types.ts**: TypeScript type definitions
+
+### Backend Services
+
+- **stt-proxy.js**: Proxy server for first STT endpoint (port 8030)
+- **stt-proxy-2.js**: Proxy server for second STT endpoint (port 8031)
+- **start-proxies.js**: Script to start both proxy servers
+
+### Data Flow
+
+1. **Configuration**: User configures microphones → Stored in database
+2. **Connection**: App connects to appropriate proxy based on mic configuration
+3. **Recording**: Audio streamed to STT server via proxy
+4. **Transcription**: STT responses processed and displayed live
+5. **Storage**: Completed transcripts saved to database
+
+## STT Endpoint Configuration
+
+The system supports multiple STT endpoints for load balancing:
+
+- **Endpoint 1**: `ws://localhost:8030` → `ws://172.22.225.138:11004/api/asr-streaming`
+- **Endpoint 2**: `ws://localhost:8031` → `ws://172.22.225.139:11004/api/asr-streaming`
+
+To add more endpoints:
+1. Create additional proxy files (e.g., `stt-proxy-3.js`)
+2. Update the endpoint configuration in the app
+3. Add the new proxy to the startup script
 
 ## Troubleshooting
 
-- **Connection issues**: Make sure the Unmute STT server is running on `ws://localhost:8080`
-- **Microphone access**: Check browser permissions for microphone access
-- **Audio quality**: Ensure good microphone quality and quiet environment for best results
+### Common Issues
 
-## Development
+1. **No Audio Devices Found**:
+   - Ensure microphone permissions are granted
+   - Check browser audio settings
+   - Try refreshing the page
 
-- Built with React 18 and TypeScript
-- Uses Vite for fast development and building
-- Styled with inline CSS for simplicity 
+2. **STT Connection Failed**:
+   - Verify proxy servers are running
+   - Check STT server endpoints
+   - Verify API keys are correct
+
+3. **Database Not Saving**:
+   - Check browser localStorage
+   - Ensure proper permissions
+   - Check console for errors
+
+### Debug Mode
+
+Enable debug logging by checking browser console for detailed information about:
+- Audio device enumeration
+- WebSocket connections
+- STT message processing
+- Database operations
+
+## Security Considerations
+
+- API keys are stored in frontend code (consider backend storage for production)
+- Database is stored in localStorage (consider backend database for production)
+- WebSocket connections are unencrypted (use WSS for production)
+
+## Performance Notes
+
+- Each microphone maintains its own WebSocket connection
+- Audio processing is done in real-time
+- Database operations are asynchronous
+- Transcripts are stored locally (consider pagination for large datasets)
+
+## Future Enhancements
+
+- Backend API for secure data storage
+- Real-time collaboration features
+- Advanced audio processing
+- Export to various formats (CSV, PDF, etc.)
+- User authentication and authorization
+- Advanced filtering and search capabilities 

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "proxy": "node stt-proxy.js"
+    "proxy": "node stt-proxy.js",
+    "proxy2": "node stt-proxy-2.js",
+    "proxies": "node start-proxies.js"
   },
   "dependencies": {
     "msgpack-lite": "^0.1.26",
