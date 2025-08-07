@@ -455,13 +455,16 @@ const App: React.FC = () => {
              .export { background: #2196f3; }
              .send { background: #ff9800; }
              .clear { background: #f44336; }
-             .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; }
-             .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-             .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
-             .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
-             .status { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; }
-             .status.success { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
-             .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+                           .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; position: relative; }
+              .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+              .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
+              .transcript-actions { position: absolute; top: 10px; right: 10px; }
+              .delete-btn { background: #f44336; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+              .delete-btn:hover { background: #d32f2f; }
+              .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+              .status { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; }
+              .status.success { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
+              .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
            </style>
          </head>
          <body>
@@ -482,22 +485,25 @@ const App: React.FC = () => {
              
              <div id="status" class="status"></div>
             
-            <div id="transcripts">
-              ${transcripts.map((t: any) => `
-                <div class="transcript">
-                  <div class="transcript-header">
-                    <div>
-                      <strong>Mic ID:</strong> ${t.micId} | 
-                      <strong>Zone:</strong> ${t.zoneId} | 
-                      <strong>Table:</strong> ${t.tableId} | 
-                      <strong>Topic:</strong> ${t.topicName}
-                    </div>
-                    <div>${new Date(t.timestamp).toLocaleString()}</div>
-                  </div>
-                  <div class="transcript-content">${t.transcript || '(Empty transcript)'}</div>
-                </div>
-              `).join('')}
-            </div>
+                         <div id="transcripts">
+               ${transcripts.map((t: any, index: number) => `
+                 <div class="transcript" data-transcript-id="${t.id}">
+                   <div class="transcript-actions">
+                     <button class="delete-btn" onclick="deleteTranscript('${t.id}', ${index})" title="Delete this transcript">🗑️</button>
+                   </div>
+                   <div class="transcript-header">
+                     <div>
+                       <strong>Mic ID:</strong> ${t.micId} | 
+                       <strong>Zone:</strong> ${t.zoneId} | 
+                       <strong>Table:</strong> ${t.tableId} | 
+                       <strong>Topic:</strong> ${t.topicName}
+                     </div>
+                     <div>${new Date(t.timestamp).toLocaleString()}</div>
+                   </div>
+                   <div class="transcript-content">${t.transcript || '(Empty transcript)'}</div>
+                 </div>
+               `).join('')}
+             </div>
           </div>
           
                      <script>
@@ -566,12 +572,62 @@ const App: React.FC = () => {
                 }
               }
              
-             function clearAll() {
-               if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
-                 localStorage.removeItem('sttDatabase');
-                 alert('All transcripts cleared. Please close this window and refresh the main application.');
+                                                       function deleteTranscript(transcriptId, index) {
+                 if (confirm('Are you sure you want to delete this transcript? This action cannot be undone.')) {
+                   try {
+                     // Get current data from localStorage
+                     const stored = localStorage.getItem('sttDatabase');
+                     if (!stored) {
+                       alert('No database found');
+                       return;
+                     }
+                     
+                     const data = JSON.parse(stored);
+                     const transcripts = data.transcripts || [];
+                     
+                     // Remove the specific transcript
+                     const updatedTranscripts = transcripts.filter(function(t) { return t.id !== transcriptId; });
+                     
+                     // Update localStorage
+                     data.transcripts = updatedTranscripts;
+                     localStorage.setItem('sttDatabase', JSON.stringify(data));
+                     
+                     // Remove from DOM
+                     const transcriptElement = document.querySelector('[data-transcript-id="' + transcriptId + '"]');
+                     if (transcriptElement) {
+                       transcriptElement.remove();
+                     }
+                     
+                     // Update summary
+                     const summaryElement = document.querySelector('.summary');
+                     if (summaryElement) {
+                       summaryElement.innerHTML = '<strong>Summary:</strong> Total transcripts: ' + updatedTranscripts.length;
+                     }
+                     
+                     // Show success message
+                     const statusDiv = document.getElementById('status');
+                     statusDiv.textContent = '✅ Transcript deleted successfully!';
+                     statusDiv.className = 'status success';
+                     statusDiv.style.display = 'block';
+                     
+                     // Hide success message after 3 seconds
+                     setTimeout(function() {
+                       statusDiv.style.display = 'none';
+                     }, 3000);
+                     
+                   } catch (error) {
+                     console.error('Error deleting transcript:', error);
+                     alert('Error deleting transcript');
+                   }
+                 }
                }
-             }
+              
+              function clearAll() {
+                if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
+                  localStorage.removeItem('sttDatabase');
+                  alert('All transcripts cleared. Please close this window and refresh the main application.');
+                }
+              }
            </script>
         </body>
         </html>
