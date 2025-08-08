@@ -284,29 +284,31 @@ const App: React.FC = () => {
           }
         };
         
-        // Handle STT responses - only set if not already set
-        if (!connection.onmessage) {
-          connection.onmessage = (event) => {
-            try {
-              if (event.data instanceof Blob) {
-                event.data.arrayBuffer().then(buffer => {
-                  const uint8Array = new Uint8Array(buffer);
-                  const data = msgpack.decode(uint8Array);
-                  
-                  if (data.type === 'Word' && data.text) {
-                    setMicTranscripts(prev => {
-                      const currentTranscript = prev.get(micId) || '';
-                      const newTranscript = currentTranscript + (currentTranscript ? ' ' : '') + data.text;
-                      return new Map(prev).set(micId, newTranscript);
-                    });
-                  }
-                });
-              }
-            } catch (e) {
-              console.error('Error processing STT message:', e);
+        // Handle STT responses - always set the handler for each recording session
+        connection.onmessage = (event) => {
+          try {
+            console.log(`Received message for mic ${micId}:`, event.data);
+            if (event.data instanceof Blob) {
+              event.data.arrayBuffer().then(buffer => {
+                const uint8Array = new Uint8Array(buffer);
+                const data = msgpack.decode(uint8Array);
+                console.log(`Decoded data for mic ${micId}:`, data);
+                
+                if (data.type === 'Word' && data.text) {
+                  console.log(`Adding word "${data.text}" to transcript for mic ${micId}`);
+                  setMicTranscripts(prev => {
+                    const currentTranscript = prev.get(micId) || '';
+                    const newTranscript = currentTranscript + (currentTranscript ? ' ' : '') + data.text;
+                    console.log(`Updated transcript for mic ${micId}:`, newTranscript);
+                    return new Map(prev).set(micId, newTranscript);
+                  });
+                }
+              });
             }
-          };
-        }
+          } catch (e) {
+            console.error('Error processing STT message:', e);
+          }
+        };
         
         source.connect(processor);
         processor.connect(audioContext.destination);
@@ -359,30 +361,55 @@ const App: React.FC = () => {
     }
     
     const transcript = micTranscripts.get(micId);
+    console.log(`Stopping recording for mic ${micId}, transcript:`, transcript);
     if (transcript) {
       const mic = mics.find(m => m.micId === micId);
       if (mic) {
         try {
-          await databaseService.addTranscript({
-            micId: mic.micId,
-            zoneId: mic.zoneId,
-            tableId: mic.tableId,
-            topicId: mic.topicId,
-            topicName: mic.topicName,
-            transcript: transcript,
-            timestamp: new Date().toISOString()
+          console.log(`Saving transcript for mic ${micId}, tableId: ${mic.tableId}`);
+          // Force reload from localStorage to ensure we have the latest data
+          await databaseService.reloadFromStorage();
+          
+          // Check if a transcript already exists for this tableId
+          const existingTranscripts = await databaseService.getAllTranscripts();
+          const existingTranscript = existingTranscripts.find(t => t.tableId === mic.tableId);
+          
+          // Only consolidate if the existing transcript has actual content and is not empty
+          if (existingTranscript && 
+              existingTranscript.transcript && 
+              existingTranscript.transcript.trim() !== '' && 
+              existingTranscript.transcript !== '(Empty transcript)') {
+            // Update existing transcript by appending new content
+            const updatedTranscript = existingTranscript.transcript + '|||' + transcript;
+            await databaseService.updateTranscript(existingTranscript.id, {
+              transcript: updatedTranscript,
+              timestamp: new Date().toISOString()
+            });
+            console.log(`Updated existing transcript for table ${mic.tableId}`);
+          } else {
+            // Create new transcript record
+            await databaseService.addTranscript({
+              micId: mic.micId,
+              zoneId: mic.zoneId,
+              tableId: mic.tableId,
+              topicId: mic.topicId,
+              topicName: mic.topicName,
+              transcript: transcript,
+              timestamp: new Date().toISOString()
+            });
+            console.log(`Created new transcript for table ${mic.tableId}`);
+          }
+          
+          // Clear the transcript
+          setMicTranscripts(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(micId);
+            return newMap;
           });
           
-                     // Clear the transcript
-           setMicTranscripts(prev => {
-             const newMap = new Map(prev);
-             newMap.delete(micId);
-             return newMap;
-           });
-           
-           // Show success message
-           setSuccessMessage('Transcript saved successfully!');
-           setTimeout(() => setSuccessMessage(null), 3000); // Auto-hide after 3 seconds
+          // Show success message
+          setSuccessMessage('Transcript saved successfully!');
+          setTimeout(() => setSuccessMessage(null), 3000); // Auto-hide after 3 seconds
         } catch (error) {
           console.error('Error saving transcript:', error);
           alert('Error saving transcript');
@@ -424,10 +451,9 @@ const App: React.FC = () => {
 
   const openTranscriptViewer = async () => {
     try {
-      // Get all transcripts from localStorage
-      const stored = localStorage.getItem('sttDatabase');
-      const data = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
-      const transcripts = data.transcripts || [];
+      // Force reload from localStorage to ensure we have the latest data
+      await databaseService.reloadFromStorage();
+      const transcripts = await databaseService.getAllTranscripts();
       
       
 
@@ -634,62 +660,92 @@ const App: React.FC = () => {
                }
              }
             
-                                                         function deleteTranscript(transcriptId, index) {
-                 if (confirm('Are you sure you want to delete this transcript? This action cannot be undone.')) {
-                   try {
-                     // Get current data from localStorage
-                     const stored = localStorage.getItem('sttDatabase');
-                     if (!stored) {
-                       alert('No database found');
-                       return;
-                     }
-                     
-                     const data = JSON.parse(stored);
-                     const transcripts = data.transcripts || [];
-                     
-                     // Remove the specific transcript
-                     const updatedTranscripts = transcripts.filter(function(t) { return t.id !== transcriptId; });
-                     
-                     // Update localStorage
-                     data.transcripts = updatedTranscripts;
-                     localStorage.setItem('sttDatabase', JSON.stringify(data));
-                     
-                     // Remove from DOM
-                     const transcriptElement = document.querySelector('[data-transcript-id="' + transcriptId + '"]');
-                     if (transcriptElement) {
-                       transcriptElement.remove();
-                     }
-                     
-                     // Update summary
-                     const summaryElement = document.querySelector('.summary');
-                     if (summaryElement) {
-                       summaryElement.innerHTML = '<strong>Summary:</strong> Total transcripts: ' + updatedTranscripts.length;
-                     }
-                     
-                     // Show success message
-                     const statusDiv = document.getElementById('status');
-                     statusDiv.textContent = '✅ Transcript deleted successfully!';
-                     statusDiv.className = 'status success';
-                     statusDiv.style.display = 'block';
-                     
-                     // Hide success message after 3 seconds
-                     setTimeout(function() {
-                       statusDiv.style.display = 'none';
-                     }, 3000);
-                     
-                   } catch (error) {
-                     console.error('Error deleting transcript:', error);
-                     alert('Error deleting transcript');
-                   }
-                 }
-               }
-             
-              function clearAll() {
-                if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
-                  localStorage.removeItem('sttDatabase');
-                  alert('All transcripts cleared. Please close this window and refresh the main application.');
+                                                                       function deleteTranscript(transcriptId, index) {
+                if (confirm('Are you sure you want to delete this transcript? This action cannot be undone.')) {
+                  try {
+                    // Get current data from localStorage and update it
+                    const stored = localStorage.getItem('sttDatabase');
+                    if (!stored) {
+                      alert('No database found');
+                      return;
+                    }
+                    
+                    const data = JSON.parse(stored);
+                    const transcripts = data.transcripts || [];
+                    
+                    // Remove the specific transcript
+                    const updatedTranscripts = transcripts.filter(function(t) { return t.id !== transcriptId; });
+                    
+                    // Update localStorage
+                    data.transcripts = updatedTranscripts;
+                    localStorage.setItem('sttDatabase', JSON.stringify(data));
+                    
+                    // Remove from DOM
+                    const transcriptElement = document.querySelector('[data-transcript-id="' + transcriptId + '"]');
+                    if (transcriptElement) {
+                      transcriptElement.remove();
+                    }
+                    
+                    // Update summary
+                    const summaryElement = document.querySelector('.summary');
+                    if (summaryElement) {
+                      summaryElement.innerHTML = '<strong>Summary:</strong> Total transcripts: ' + updatedTranscripts.length;
+                    }
+                    
+                    // Show success message
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.textContent = '✅ Transcript deleted successfully!';
+                    statusDiv.className = 'status success';
+                    statusDiv.style.display = 'block';
+                    
+                    // Hide success message after 3 seconds
+                    setTimeout(function() {
+                      statusDiv.style.display = 'none';
+                    }, 3000);
+                    
+                  } catch (error) {
+                    console.error('Error deleting transcript:', error);
+                    alert('Error deleting transcript');
+                  }
                 }
               }
+             
+                             function clearAll() {
+                 if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
+                   // Clear from localStorage
+                   const stored = localStorage.getItem('sttDatabase');
+                   if (stored) {
+                     const data = JSON.parse(stored);
+                     data.transcripts = [];
+                     localStorage.setItem('sttDatabase', JSON.stringify(data));
+                   }
+                   
+                   // Clear the display
+                   const transcriptsContainer = document.getElementById('transcripts');
+                   if (transcriptsContainer) {
+                     transcriptsContainer.innerHTML = '';
+                   }
+                   
+                   // Update summary
+                   const summaryElement = document.querySelector('.summary');
+                   if (summaryElement) {
+                     summaryElement.innerHTML = '<strong>Summary:</strong> Total transcripts: 0';
+                   }
+                   
+                   // Show success message
+                   const statusDiv = document.getElementById('status');
+                   statusDiv.textContent = '✅ All transcripts cleared successfully!';
+                   statusDiv.className = 'status success';
+                   statusDiv.style.display = 'block';
+                   
+                   // Hide success message after 3 seconds
+                   setTimeout(function() {
+                     statusDiv.style.display = 'none';
+                   }, 3000);
+                   
+                   alert('All transcripts cleared. Please close this window and refresh the main application.');
+                 }
+               }
            </script>
         </body>
         </html>

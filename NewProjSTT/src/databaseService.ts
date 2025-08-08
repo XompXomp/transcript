@@ -96,6 +96,24 @@ class DatabaseService {
     );
   }
 
+  async updateTranscript(transcriptId: string, updates: Partial<Transcript>): Promise<void> {
+    const transcriptIndex = this.database.transcripts.findIndex(transcript => transcript.id === transcriptId);
+    if (transcriptIndex !== -1) {
+      this.database.transcripts[transcriptIndex] = { ...this.database.transcripts[transcriptIndex], ...updates };
+      await this.saveDatabase();
+    }
+  }
+
+  async deleteTranscript(transcriptId: string): Promise<void> {
+    this.database.transcripts = this.database.transcripts.filter(transcript => transcript.id !== transcriptId);
+    await this.saveDatabase();
+  }
+
+  async deleteTranscriptsByTableId(tableId: string): Promise<void> {
+    this.database.transcripts = this.database.transcripts.filter(transcript => transcript.tableId !== tableId);
+    await this.saveDatabase();
+  }
+
   // Export/Import Methods
   async exportDatabase(): Promise<string> {
     return JSON.stringify(this.database, null, 2);
@@ -123,6 +141,17 @@ class DatabaseService {
         console.error('Error parsing stored database:', error);
       }
     }
+  }
+
+  // Force reload from localStorage (useful when external changes are made)
+  async reloadFromStorage(): Promise<void> {
+    await this.initializeFromStorage();
+  }
+
+  // Clear all transcripts from both memory and localStorage
+  async clearAllTranscripts(): Promise<void> {
+    this.database.transcripts = [];
+    await this.saveDatabase();
   }
 }
 
