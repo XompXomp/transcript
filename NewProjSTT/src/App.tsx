@@ -424,20 +424,12 @@ const App: React.FC = () => {
 
   const openTranscriptViewer = async () => {
     try {
-      // Get all transcripts from localStorage
-      const stored = localStorage.getItem('sttDatabase');
-      if (!stored) {
-        alert('No transcripts found in database');
-        return;
-      }
-
-      const data = JSON.parse(stored);
-      const transcripts = data.transcripts || [];
+             // Get all transcripts from localStorage
+       const stored = localStorage.getItem('sttDatabase');
+       const data = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
+       const transcripts = data.transcripts || [];
       
-      if (transcripts.length === 0) {
-        alert('No transcripts found in database');
-        return;
-      }
+      
 
              // Create a simple HTML page with the transcript data
        const htmlContent = `
@@ -449,12 +441,14 @@ const App: React.FC = () => {
              body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
              .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
              .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-             .controls { display: flex; gap: 10px; }
-             button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-             .refresh { background: #4caf50; }
-             .export { background: #2196f3; }
-             .send { background: #ff9800; }
-             .clear { background: #f44336; }
+                           .controls { display: flex; gap: 10px; }
+              button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+              .refresh { background: #4caf50; }
+              .export { background: #2196f3; }
+              .import { background: #9c27b0; }
+              .send { background: #ff9800; }
+              .clear { background: #f44336; }
+              #fileInput { display: none; }
                            .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; position: relative; }
               .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
               .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
@@ -471,12 +465,14 @@ const App: React.FC = () => {
            <div class="container">
              <div class="header">
                <h1>📝 Transcript History Viewer</h1>
-               <div class="controls">
-                 <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
-                 <button class="export" onclick="exportData()">📥 Export JSON</button>
-                 <button class="send" onclick="sendToAPI()">📤 Send to API</button>
-                 <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
-               </div>
+                               <div class="controls">
+
+                  <button class="export" onclick="exportData()">📥 Export JSON</button>
+                  <button class="import" onclick="document.getElementById('fileInput').click()">📁 Import JSON</button>
+                  <button class="send" onclick="sendToAPI()">📤 Send to API</button>
+                  <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
+                </div>
+                <input type="file" id="fileInput" accept=".json" onchange="importData(event)" />
              </div>
             
                          <div class="summary">
@@ -507,18 +503,83 @@ const App: React.FC = () => {
           </div>
           
                      <script>
-             function exportData() {
-               const data = ${JSON.stringify(transcripts)};
-               const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-               const url = URL.createObjectURL(blob);
-               const a = document.createElement('a');
-               a.href = url;
-               a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
-               document.body.appendChild(a);
-               a.click();
-               document.body.removeChild(a);
-               URL.revokeObjectURL(url);
-             }
+                           function exportData() {
+                const data = ${JSON.stringify(transcripts)};
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }
+              
+              function importData(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                  try {
+                    const importedData = JSON.parse(e.target.result);
+                    const statusDiv = document.getElementById('status');
+                    
+                    // Validate the imported data structure
+                    if (!Array.isArray(importedData)) {
+                      throw new Error('Invalid JSON format: Expected an array of transcripts');
+                    }
+                    
+                    // Check if each item has required fields
+                    const requiredFields = ['id', 'micId', 'zoneId', 'tableId', 'topicId', 'topicName', 'transcript', 'timestamp'];
+                    for (let i = 0; i < importedData.length; i++) {
+                      const item = importedData[i];
+                      for (let j = 0; j < requiredFields.length; j++) {
+                        if (!(requiredFields[j] in item)) {
+                          throw new Error('Invalid transcript at index ' + i + ': Missing required field "' + requiredFields[j] + '"');
+                        }
+                      }
+                    }
+                    
+                    // Get current data from localStorage
+                    const stored = localStorage.getItem('sttDatabase');
+                    const currentData = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
+                    
+                    // Merge imported transcripts with existing ones
+                    const existingTranscripts = currentData.transcripts || [];
+                    const mergedTranscripts = [...existingTranscripts, ...importedData];
+                    
+                    // Remove duplicates based on transcript ID
+                    const uniqueTranscripts = mergedTranscripts.filter((transcript, index, self) => 
+                      index === self.findIndex(t => t.id === transcript.id)
+                    );
+                    
+                    // Update localStorage
+                    currentData.transcripts = uniqueTranscripts;
+                    localStorage.setItem('sttDatabase', JSON.stringify(currentData));
+                    
+                    // Show success message
+                    statusDiv.textContent = '✅ Successfully imported ' + importedData.length + ' transcripts! Total transcripts: ' + uniqueTranscripts.length;
+                    statusDiv.className = 'status success';
+                    statusDiv.style.display = 'block';
+                    
+                    
+                    
+                  } catch (error) {
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.textContent = '❌ Import failed: ' + error.message;
+                    statusDiv.className = 'status error';
+                    statusDiv.style.display = 'block';
+                    console.error('Import error:', error);
+                  }
+                };
+                
+                reader.readAsText(file);
+                
+                // Reset the file input
+                event.target.value = '';
+              }
              
                            async function sendToAPI() {
                 const statusDiv = document.getElementById('status');
