@@ -741,6 +741,35 @@ const App: React.FC = () => {
     }
   };
 
+  const stopAllRecording = async () => {
+    // Get all mics that are currently recording
+    const recordingMics = mics.filter(mic => isRecording(mic.micId));
+
+    if (recordingMics.length === 0) {
+      console.log('No mics currently recording');
+      return;
+    }
+
+    console.log(`Stopping recording for ${recordingMics.length} mics with 50ms delay between each`);
+
+    // Stop recording for each mic with 50ms delay
+    for (let i = 0; i < recordingMics.length; i++) {
+      const mic = recordingMics[i];
+      
+      // Add delay for all except the first mic
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      try {
+        await stopRecording(mic.micId);
+        console.log(`Stopped recording for mic ${mic.micId}`);
+      } catch (error) {
+        console.error(`Failed to stop recording for mic ${mic.micId}:`, error);
+      }
+    }
+  };
+
   return (
     <div style={{
       maxWidth: 1400,
@@ -846,6 +875,21 @@ const App: React.FC = () => {
             }}
           >
             🎙️ Start All Recording
+          </button>
+
+          <button
+            onClick={stopAllRecording}
+            style={{
+              background: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+          >
+            ⏹️ Stop All Recording
           </button>
         </div>
 
