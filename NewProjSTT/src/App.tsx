@@ -424,216 +424,217 @@ const App: React.FC = () => {
 
   const openTranscriptViewer = async () => {
     try {
-             // Get all transcripts from localStorage
-       const stored = localStorage.getItem('sttDatabase');
-       const data = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
-       const transcripts = data.transcripts || [];
+      // Get all transcripts from localStorage
+      const stored = localStorage.getItem('sttDatabase');
+      const data = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
+      const transcripts = data.transcripts || [];
       
       
 
-             // Create a simple HTML page with the transcript data
-       const htmlContent = `
-         <!DOCTYPE html>
-         <html>
-         <head>
-           <title>Transcript History Viewer</title>
-           <style>
-             body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-             .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-             .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-                           .controls { display: flex; gap: 10px; }
-              button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-              .refresh { background: #4caf50; }
-              .export { background: #2196f3; }
-              .import { background: #9c27b0; }
-              .send { background: #ff9800; }
-              .clear { background: #f44336; }
-              #fileInput { display: none; }
-                           .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; position: relative; }
-              .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-              .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
-              .transcript-actions { position: absolute; top: 10px; right: 10px; }
-              .delete-btn { background: #f44336; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
-              .delete-btn:hover { background: #d32f2f; }
-              .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
-              .status { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; }
-              .status.success { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
-              .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
-           </style>
-         </head>
-         <body>
-           <div class="container">
-             <div class="header">
-               <h1>📝 Transcript History Viewer</h1>
-                               <div class="controls">
+      // Create a simple HTML page with the transcript data
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Transcript History Viewer</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                          .controls { display: flex; gap: 10px; }
+             button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+             .refresh { background: #4caf50; }
+             .export { background: #2196f3; }
+             .import { background: #9c27b0; }
+             .send { background: #ff9800; }
+             .clear { background: #f44336; }
+             #fileInput { display: none; }
+                          .transcript { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px; position: relative; }
+            .transcript-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .transcript-content { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; }
+            .transcript-actions { position: absolute; top: 10px; right: 10px; }
+            .delete-btn { background: #f44336; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+            .delete-btn:hover { background: #d32f2f; }
+            .summary { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+            .status { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; }
+            .status.success { background: #e8f5e8; color: #2e7d32; border: 1px solid #4caf50; }
+            .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+         </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📝 Transcript History Viewer</h1>
+                              <div class="controls">
 
-                  <button class="export" onclick="exportData()">📥 Export JSON</button>
-                  <button class="import" onclick="document.getElementById('fileInput').click()">📁 Import JSON</button>
-                  <button class="send" onclick="sendToAPI()">📤 Send to API</button>
-                  <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
+                 <button class="export" onclick="exportData()">📥 Export JSON</button>
+                 <button class="import" onclick="document.getElementById('fileInput').click()">📁 Import JSON</button>
+                 <button class="send" onclick="sendToAPI()">📤 Send to API</button>
+                 <button class="clear" onclick="clearAll()">🗑️ Clear All</button>
+               </div>
+               <input type="file" id="fileInput" accept=".json" onchange="importData(event)" />
+            </div>
+           
+                        <div class="summary">
+              <strong>Summary:</strong> Total transcripts: ${transcripts.length}
+            </div>
+            
+            <div id="status" class="status"></div>
+           
+                        <div id="transcripts">
+              ${transcripts.map((t: any, index: number) => `
+                <div class="transcript" data-transcript-id="${t.id}">
+                  <div class="transcript-actions">
+                    <button class="delete-btn" onclick="deleteTranscript('${t.id}', ${index})" title="Delete this transcript">🗑️</button>
+                  </div>
+                  <div class="transcript-header">
+                    <div>
+                      <strong>Mic ID:</strong> ${t.micId} | 
+                      <strong>Zone:</strong> ${t.zoneId} | 
+                      <strong>Table:</strong> ${t.tableId} | 
+                      <strong>Topic:</strong> ${t.topicName}
+                    </div>
+                    <div>${new Date(t.timestamp).toLocaleString()}</div>
+                  </div>
+                  <div class="transcript-content">${t.transcript || '(Empty transcript)'}</div>
                 </div>
-                <input type="file" id="fileInput" accept=".json" onchange="importData(event)" />
-             </div>
+              `).join('')}
+            </div>
+         </div>
+         
+                   <script>
+                         function exportData() {
+               const data = ${JSON.stringify(transcripts)};
+               const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+               const url = URL.createObjectURL(blob);
+               const a = document.createElement('a');
+               a.href = url;
+               a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
+               document.body.appendChild(a);
+               a.click();
+               document.body.removeChild(a);
+               URL.revokeObjectURL(url);
+             }
+             
+             function importData(event) {
+               const file = event.target.files[0];
+               if (!file) return;
+               
+               const reader = new FileReader();
+               reader.onload = function(e) {
+                 try {
+                   const importedData = JSON.parse(e.target.result);
+                   const statusDiv = document.getElementById('status');
+                   
+                   // Validate the imported data structure
+                   if (!Array.isArray(importedData)) {
+                     throw new Error('Invalid JSON format: Expected an array of transcripts');
+                   }
+                   
+                   // Check if each item has required fields
+                   const requiredFields = ['id', 'micId', 'zoneId', 'tableId', 'topicId', 'topicName', 'transcript', 'timestamp'];
+                   for (let i = 0; i < importedData.length; i++) {
+                     const item = importedData[i];
+                     for (let j = 0; j < requiredFields.length; j++) {
+                       if (!(requiredFields[j] in item)) {
+                         throw new Error('Invalid transcript at index ' + i + ': Missing required field "' + requiredFields[j] + '"');
+                       }
+                     }
+                   }
+                   
+                   // Get current data from localStorage
+                   const stored = localStorage.getItem('sttDatabase');
+                   const currentData = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
+                   
+                   // Merge imported transcripts with existing ones
+                   const existingTranscripts = currentData.transcripts || [];
+                   const mergedTranscripts = [...existingTranscripts, ...importedData];
+                   
+                   // Remove duplicates based on transcript ID
+                   const uniqueTranscripts = mergedTranscripts.filter((transcript, index, self) => 
+                     index === self.findIndex(t => t.id === transcript.id)
+                   );
+                   
+                   // Update localStorage
+                   currentData.transcripts = uniqueTranscripts;
+                   localStorage.setItem('sttDatabase', JSON.stringify(currentData));
+                   
+                   // Show success message
+                   statusDiv.textContent = '✅ Successfully imported ' + importedData.length + ' transcripts! Total transcripts: ' + uniqueTranscripts.length;
+                   statusDiv.className = 'status success';
+                   statusDiv.style.display = 'block';
+                   
+                   
+                   
+                   
+                 } catch (error) {
+                   const statusDiv = document.getElementById('status');
+                   statusDiv.textContent = '❌ Import failed: ' + error.message;
+                   statusDiv.className = 'status error';
+                   statusDiv.style.display = 'block';
+                   console.error('Import error:', error);
+                 }
+               };
+               
+               reader.readAsText(file);
+               
+               // Reset the file input
+               event.target.value = '';
+             }
             
-                         <div class="summary">
-               <strong>Summary:</strong> Total transcripts: ${transcripts.length}
-             </div>
-             
-             <div id="status" class="status"></div>
+                         async function sendToAPI() {
+               const statusDiv = document.getElementById('status');
+               const data = ${JSON.stringify(transcripts)};
+               
+               // Debug: Log what we're sending
+               console.log('Sending to API:', data);
+               console.log('Data structure:', data[0] ? Object.keys(data[0]) : 'No data');
+               
+               try {
+                 statusDiv.textContent = '📤 Sending transcripts to API...';
+                 statusDiv.className = 'status';
+                 statusDiv.style.display = 'block';
+                 
+                 const endpoint = 'http://172.22.225.47:8006/transcripts/batch';
+                 
+                 // Convert to snake_case format (as shown in the error)
+                 const snakeCaseData = data.map(t => ({
+                   id: t.id,
+                   mic_id: t.micId,
+                   zone_id: t.zoneId,
+                   table_id: t.tableId,
+                   topic_id: t.topicId,
+                   topic_name: t.topicName,
+                   transcript: t.transcript,
+                   timestamp: t.timestamp
+                 }));
+                 
+                 const response = await fetch(endpoint, {
+                   method: 'POST',
+                   headers: {
+                     'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify(snakeCaseData)
+                 });
+                 
+                 if (response.ok) {
+                   const result = await response.json();
+                   statusDiv.textContent = '✅ Successfully sent ' + data.length + ' transcripts to API!';
+                   statusDiv.className = 'status success';
+                   console.log('API Response:', result);
+                 } else {
+                   const errorText = await response.text();
+                   console.error('API Error Response:', errorText);
+                   throw new Error('HTTP ' + response.status + ': ' + response.statusText + ' - ' + errorText);
+                 }
+               } catch (error) {
+                 statusDiv.textContent = '❌ Error sending to API: ' + error.message;
+                 statusDiv.className = 'status error';
+                 console.error('API Error:', error);
+               }
+             }
             
-                         <div id="transcripts">
-               ${transcripts.map((t: any, index: number) => `
-                 <div class="transcript" data-transcript-id="${t.id}">
-                   <div class="transcript-actions">
-                     <button class="delete-btn" onclick="deleteTranscript('${t.id}', ${index})" title="Delete this transcript">🗑️</button>
-                   </div>
-                   <div class="transcript-header">
-                     <div>
-                       <strong>Mic ID:</strong> ${t.micId} | 
-                       <strong>Zone:</strong> ${t.zoneId} | 
-                       <strong>Table:</strong> ${t.tableId} | 
-                       <strong>Topic:</strong> ${t.topicName}
-                     </div>
-                     <div>${new Date(t.timestamp).toLocaleString()}</div>
-                   </div>
-                   <div class="transcript-content">${t.transcript || '(Empty transcript)'}</div>
-                 </div>
-               `).join('')}
-             </div>
-          </div>
-          
-                     <script>
-                           function exportData() {
-                const data = ${JSON.stringify(transcripts)};
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'transcripts_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }
-              
-              function importData(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                  try {
-                    const importedData = JSON.parse(e.target.result);
-                    const statusDiv = document.getElementById('status');
-                    
-                    // Validate the imported data structure
-                    if (!Array.isArray(importedData)) {
-                      throw new Error('Invalid JSON format: Expected an array of transcripts');
-                    }
-                    
-                    // Check if each item has required fields
-                    const requiredFields = ['id', 'micId', 'zoneId', 'tableId', 'topicId', 'topicName', 'transcript', 'timestamp'];
-                    for (let i = 0; i < importedData.length; i++) {
-                      const item = importedData[i];
-                      for (let j = 0; j < requiredFields.length; j++) {
-                        if (!(requiredFields[j] in item)) {
-                          throw new Error('Invalid transcript at index ' + i + ': Missing required field "' + requiredFields[j] + '"');
-                        }
-                      }
-                    }
-                    
-                    // Get current data from localStorage
-                    const stored = localStorage.getItem('sttDatabase');
-                    const currentData = stored ? JSON.parse(stored) : { mics: [], transcripts: [] };
-                    
-                    // Merge imported transcripts with existing ones
-                    const existingTranscripts = currentData.transcripts || [];
-                    const mergedTranscripts = [...existingTranscripts, ...importedData];
-                    
-                    // Remove duplicates based on transcript ID
-                    const uniqueTranscripts = mergedTranscripts.filter((transcript, index, self) => 
-                      index === self.findIndex(t => t.id === transcript.id)
-                    );
-                    
-                    // Update localStorage
-                    currentData.transcripts = uniqueTranscripts;
-                    localStorage.setItem('sttDatabase', JSON.stringify(currentData));
-                    
-                    // Show success message
-                    statusDiv.textContent = '✅ Successfully imported ' + importedData.length + ' transcripts! Total transcripts: ' + uniqueTranscripts.length;
-                    statusDiv.className = 'status success';
-                    statusDiv.style.display = 'block';
-                    
-                    
-                    
-                  } catch (error) {
-                    const statusDiv = document.getElementById('status');
-                    statusDiv.textContent = '❌ Import failed: ' + error.message;
-                    statusDiv.className = 'status error';
-                    statusDiv.style.display = 'block';
-                    console.error('Import error:', error);
-                  }
-                };
-                
-                reader.readAsText(file);
-                
-                // Reset the file input
-                event.target.value = '';
-              }
-             
-                           async function sendToAPI() {
-                const statusDiv = document.getElementById('status');
-                const data = ${JSON.stringify(transcripts)};
-                
-                // Debug: Log what we're sending
-                console.log('Sending to API:', data);
-                console.log('Data structure:', data[0] ? Object.keys(data[0]) : 'No data');
-                
-                try {
-                  statusDiv.textContent = '📤 Sending transcripts to API...';
-                  statusDiv.className = 'status';
-                  statusDiv.style.display = 'block';
-                  
-                  const endpoint = 'http://172.22.225.47:8006/transcripts/batch';
-                  
-                  // Convert to snake_case format (as shown in the error)
-                  const snakeCaseData = data.map(t => ({
-                    id: t.id,
-                    mic_id: t.micId,
-                    zone_id: t.zoneId,
-                    table_id: t.tableId,
-                    topic_id: t.topicId,
-                    topic_name: t.topicName,
-                    transcript: t.transcript,
-                    timestamp: t.timestamp
-                  }));
-                  
-                  const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(snakeCaseData)
-                  });
-                  
-                  if (response.ok) {
-                    const result = await response.json();
-                    statusDiv.textContent = '✅ Successfully sent ' + data.length + ' transcripts to API!';
-                    statusDiv.className = 'status success';
-                    console.log('API Response:', result);
-                  } else {
-                    const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText + ' - ' + errorText);
-                  }
-                } catch (error) {
-                  statusDiv.textContent = '❌ Error sending to API: ' + error.message;
-                  statusDiv.className = 'status error';
-                  console.error('API Error:', error);
-                }
-              }
-             
-                                                       function deleteTranscript(transcriptId, index) {
+                                                         function deleteTranscript(transcriptId, index) {
                  if (confirm('Are you sure you want to delete this transcript? This action cannot be undone.')) {
                    try {
                      // Get current data from localStorage
@@ -682,7 +683,7 @@ const App: React.FC = () => {
                    }
                  }
                }
-              
+             
               function clearAll() {
                 if (confirm('Are you sure you want to delete ALL transcripts? This action cannot be undone.')) {
                   localStorage.removeItem('sttDatabase');
@@ -694,7 +695,7 @@ const App: React.FC = () => {
         </html>
       `;
 
-      // Open in new window
+      // Open in new tab
       const newWindow = window.open('', '_blank');
       if (newWindow) {
         newWindow.document.write(htmlContent);
@@ -705,6 +706,38 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Error opening transcript viewer:', error);
       alert('Error opening transcript viewer');
+    }
+  };
+
+  const startAllRecording = async () => {
+    // Get all connected mics that are not currently recording
+    const connectedMics = mics.filter(mic => {
+      const status = micStatuses.get(mic.micId);
+      return status?.isConnected && !isRecording(mic.micId);
+    });
+
+    if (connectedMics.length === 0) {
+      console.log('No connected mics available to start recording');
+      return;
+    }
+
+    console.log(`Starting recording for ${connectedMics.length} connected mics with 50ms delay between each`);
+
+    // Start recording for each connected mic with 50ms delay
+    for (let i = 0; i < connectedMics.length; i++) {
+      const mic = connectedMics[i];
+      
+      // Add delay for all except the first mic
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      try {
+        await handleRecording(mic.micId);
+        console.log(`Started recording for mic ${mic.micId}`);
+      } catch (error) {
+        console.error(`Failed to start recording for mic ${mic.micId}:`, error);
+      }
     }
   };
 
@@ -778,23 +811,43 @@ const App: React.FC = () => {
          </div>
        )}
        
-       {/* Add Mic Button */}
-       <div style={{ marginBottom: 20 }}>
-        <button
-          onClick={addMic}
-          style={{
-            background: '#4caf50',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            padding: '12px 24px',
-            fontSize: 16,
-            cursor: 'pointer'
-          }}
-        >
-          ➕ Add New Microphone
-        </button>
-      </div>
+               {/* Button Container */}
+        <div style={{ 
+          marginBottom: 20, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}>
+          <button
+            onClick={addMic}
+            style={{
+              background: '#4caf50',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+          >
+            ➕ Add New Microphone
+          </button>
+
+          <button
+            onClick={startAllRecording}
+            style={{
+              background: '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+          >
+            🎙️ Start All Recording
+          </button>
+        </div>
 
       {/* Microphones Table */}
       <div style={{
