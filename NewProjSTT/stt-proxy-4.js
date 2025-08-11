@@ -1,17 +1,18 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ port: 8030 });
+// Create WebSocket server for fourth endpoint
+const wss = new WebSocket.Server({ port: 8033 });
 
-console.log('🚀 STT Proxy Server 1 started on ws://localhost:8030');
-console.log('📡 Connecting to STT Server: ws://172.22.225.138:11004/api/asr-streaming');
+console.log('🚀 STT Proxy Server 4 started on ws://localhost:8033');
+console.log('📡 Connecting to STT Server: [To be configured]');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
 wss.on('connection', (ws) => {
   const clientId = Math.random().toString(36).substr(2, 9);
-  console.log(`🔌 [Proxy 1] Client ${clientId} connected to proxy`);
+  console.log(`🔌 [Proxy 4] Client ${clientId} connected to proxy`);
   
+  // Connect to fourth STT server with authentication headers
   const sttWs = new WebSocket('ws://172.22.225.146:11000/api/asr-streaming', {
     headers: {
       'kyutai-api-key': 'public_token'
@@ -19,8 +20,8 @@ wss.on('connection', (ws) => {
   });
   
   sttWs.on('open', () => {
-    console.log(`✅ [Proxy 1] Client ${clientId} connected to STT Server 1 (ws://172.22.225.146:11000/api/asr-streaming)`);
-    console.log(`📊 [Proxy 1] Total clients connected: ${wss.clients.size}`);
+    console.log(`✅ [Proxy 4] Client ${clientId} connected to STT Server 4`);
+    console.log(`📊 [Proxy 4] Total clients connected: ${wss.clients.size}`);
   });
   
   sttWs.on('message', (data) => {
@@ -31,12 +32,12 @@ wss.on('connection', (ws) => {
   });
   
   sttWs.on('error', (error) => {
-    console.error(`❌ [Proxy 1] Client ${clientId} STT server error:`, error);
+    console.error(`❌ [Proxy 4] Client ${clientId} STT server error:`, error);
     ws.close();
   });
   
   sttWs.on('close', () => {
-    console.log(`🔌 [Proxy 1] Client ${clientId} STT server connection closed`);
+    console.log(`🔌 [Proxy 4] Client ${clientId} STT server connection closed`);
     ws.close();
   });
   
@@ -48,12 +49,12 @@ wss.on('connection', (ws) => {
   });
   
   ws.on('close', () => {
-    console.log(`🔌 [Proxy 1] Client ${clientId} disconnected`);
+    console.log(`🔌 [Proxy 4] Client ${clientId} disconnected`);
     sttWs.close();
   });
   
   ws.on('error', (error) => {
-    console.error(`❌ [Proxy 1] Client ${clientId} error:`, error);
+    console.error(`❌ [Proxy 4] Client ${clientId} error:`, error);
     sttWs.close();
   });
 });

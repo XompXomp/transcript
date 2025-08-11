@@ -17,13 +17,31 @@ const App: React.FC = () => {
     {
       id: 'endpoint1',
       name: 'STT Server 1',
-      url: 'ws://172.22.225.138:11004/api/asr-streaming',
+      url: '',
       apiKey: 'public_token'
     },
     {
       id: 'endpoint2',
       name: 'STT Server 2',
-      url: 'ws://172.22.225.139:11004/api/asr-streaming',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint3',
+      name: 'STT Server 3',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint4',
+      name: 'STT Server 4',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint5',
+      name: 'STT Server 5',
+      url: '',
       apiKey: 'public_token'
     }
   ];
@@ -85,6 +103,12 @@ const App: React.FC = () => {
           return 8030;
         case 'endpoint2':
           return 8031;
+        case 'endpoint3':
+          return 8032;
+        case 'endpoint4':
+          return 8033;
+        case 'endpoint5':
+          return 8034;
         default:
           return 8030;
       }
@@ -104,16 +128,16 @@ const App: React.FC = () => {
         }));
         
         // Send authentication
-        try {
-          const authMessage = {
-            type: "Auth",
+      try {
+        const authMessage = {
+          type: "Auth",
             token: endpoint.apiKey
-          };
-          const encoded = msgpack.encode(authMessage);
+        };
+        const encoded = msgpack.encode(authMessage);
           ws.send(encoded);
-        } catch (e) {
-          console.log('Could not send auth message:', e);
-        }
+      } catch (e) {
+        console.log('Could not send auth message:', e);
+      }
         
         resolve(ws);
       };
@@ -145,7 +169,7 @@ const App: React.FC = () => {
       tableId: '',
       topicId: '',
       topicName: '',
-      sttEndpoint: 'endpoint1',
+      sttEndpoint: '',
       isActive: false
     };
 
@@ -386,7 +410,7 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString()
             });
             console.log(`Updated existing transcript for table ${mic.tableId}`);
-          } else {
+    } else {
             // Create new transcript record
             await databaseService.addTranscript({
               micId: mic.micId,
@@ -776,7 +800,7 @@ const App: React.FC = () => {
       console.log('No connected mics available to start recording');
       return;
     }
-
+    
     console.log(`Starting recording for ${connectedMics.length} connected mics with 50ms delay between each`);
 
     // Start recording for each connected mic with 50ms delay
@@ -820,7 +844,7 @@ const App: React.FC = () => {
       try {
         await stopRecording(mic.micId);
         console.log(`Stopped recording for mic ${mic.micId}`);
-      } catch (error) {
+    } catch (error) {
         console.error(`Failed to stop recording for mic ${mic.micId}:`, error);
       }
     }
@@ -916,15 +940,15 @@ const App: React.FC = () => {
             }}
           >
             ➕ Add New Microphone
-          </button>
-
-          <button
+        </button>
+        
+        <button
             onClick={startAllRecording}
-            style={{
-              background: '#ff9800',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
+          style={{
+            background: '#ff9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
               padding: '12px 24px',
               fontSize: 16,
               cursor: 'pointer'
@@ -941,18 +965,18 @@ const App: React.FC = () => {
               border: 'none',
               borderRadius: 8,
               padding: '12px 24px',
-              fontSize: 16,
+            fontSize: 16,
               cursor: 'pointer'
-            }}
-          >
+          }}
+        >
             ⏹️ Stop All Recording
-          </button>
-        </div>
-
+        </button>
+      </div>
+      
       {/* Microphones Table */}
-      <div style={{
-        background: 'white',
-        borderRadius: 8,
+       <div style={{
+         background: 'white',
+         borderRadius: 8,
         border: '1px solid #ddd',
         overflow: 'hidden'
       }}>
@@ -1048,10 +1072,10 @@ const App: React.FC = () => {
                       fontSize: 12
                     }}
                   >
-                    <option value={1}>Zone 1</option>
-                    <option value={2}>Zone 2</option>
-                    <option value={3}>Zone 3</option>
-                    <option value={4}>Zone 4</option>
+                    <option value={1}>Digital Transformation and Urban Futures</option>
+                    <option value={2}>City Leadership and Economic Development</option>
+                    <option value={3}>Quality of Life</option>
+                    <option value={4}>Environmental Solutions and Urban Regeneration</option>
                   </select>
                 </div>
 
@@ -1095,7 +1119,7 @@ const App: React.FC = () => {
                       <option value="02">02</option>
                       <option value="03">03</option>
                       <option value="04">04</option>
-                      <option value="05">05</option>
+                      <option value="05">05</option>              
                    </select>
                  </div>
 
@@ -1113,11 +1137,11 @@ const App: React.FC = () => {
                      }}
                    >
                      <option value="">Select Topic Name...</option>
-                     <option value="Topic NameOne">Topic NameOne</option>
-                     <option value="Topic NameTwo">Topic NameTwo</option>
-                     <option value="Topic NameThree">Topic NameThree</option>
-                     <option value="Topic NameFour">Topic NameFour</option>
-                     <option value="Topic NameFive">Topic NameFive</option>
+                     <option value="Urban Intelligence ">Urban Intelligence</option>
+                     <option value="New Energy">New Energy</option>
+                     <option value="Mobility">Mobility</option>
+                     <option value="Education and talent">Education and talent</option>
+                     <option value="Mission driven ecosystems">Mission driven ecosystems</option>
                    </select>
                  </div>
 
@@ -1212,7 +1236,7 @@ const App: React.FC = () => {
 
                 {/* Transcript */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{
+           <div style={{
                     height: '60px',
                     overflowY: 'auto',
                     padding: '4px',
@@ -1229,10 +1253,10 @@ const App: React.FC = () => {
                     ) : (
                       <div style={{ color: '#999', fontStyle: 'italic' }}>
                         No transcript...
-                      </div>
-                    )}
-                  </div>
-                  
+           </div>
+         )}
+       </div>
+      
                   {transcript && (
                     <button
                       onClick={() => downloadTranscript(mic.micId)}
