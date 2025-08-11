@@ -1087,6 +1087,97 @@ const App: React.FC = () => {
     }
   };
 
+  const activateAllMics = async () => {
+    // Check if any mics are currently active
+    const activeMics = mics.filter(mic => mic.isActive);
+    const inactiveMics = mics.filter(mic => !mic.isActive);
+    
+    // Check if any active mics are disconnected from STT server
+    const disconnectedActiveMics = activeMics.filter(mic => {
+      const status = micStatuses.get(mic.micId);
+      return status?.status === 'Disconnected from STT server';
+    });
+
+    if (disconnectedActiveMics.length > 0) {
+      // Scenario 2: Some active mics are disconnected from STT server
+      // First, deactivate all mics
+      console.log('Deactivating all mics due to STT server disconnection...');
+      
+      for (let i = 0; i < mics.length; i++) {
+        const mic = mics[i];
+        if (mic.isActive) {
+          try {
+            await updateMic(mic.micId, { isActive: false });
+            // Close connection if it exists
+            const connection = micConnections.get(mic.micId);
+            if (connection) {
+              connection.close();
+              setMicConnections(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(mic.micId);
+                return newMap;
+              });
+            }
+            setMicStatuses(prev => new Map(prev).set(mic.micId, { 
+              isConnected: false, 
+              status: 'Disconnected' 
+            }));
+          } catch (error) {
+            console.error(`Failed to deactivate mic ${mic.micId}:`, error);
+          }
+        }
+      }
+      
+      // Wait a moment, then activate all mics
+      setTimeout(async () => {
+        console.log('Reactivating all mics...');
+        for (let i = 0; i < mics.length; i++) {
+          const mic = mics[i];
+          try {
+            await updateMic(mic.micId, { isActive: true });
+            const connection = await createSTTConnection(mic);
+            if (connection) {
+              setMicConnections(prev => new Map(prev).set(mic.micId, connection));
+            }
+          } catch (error) {
+            console.error(`Failed to reactivate mic ${mic.micId}:`, error);
+          }
+          
+          // Add delay between activations
+          if (i < mics.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        }
+      }, 1000);
+      
+    } else if (inactiveMics.length > 0) {
+      // Scenario 1: Some mics are disconnected (inactive)
+      // Activate all inactive mics
+      console.log('Activating all inactive mics...');
+      
+      for (let i = 0; i < inactiveMics.length; i++) {
+        const mic = inactiveMics[i];
+        try {
+          await updateMic(mic.micId, { isActive: true });
+          const connection = await createSTTConnection(mic);
+          if (connection) {
+            setMicConnections(prev => new Map(prev).set(mic.micId, connection));
+          }
+        } catch (error) {
+          console.error(`Failed to activate mic ${mic.micId}:`, error);
+        }
+        
+        // Add delay between activations
+        if (i < inactiveMics.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+    } else {
+      // All mics are already active and connected
+      console.log('All mics are already active and connected');
+    }
+  };
+
   return (
     <div style={{
       maxWidth: 1400,
@@ -1179,6 +1270,21 @@ const App: React.FC = () => {
             ➕ Add New Microphone
         </button>
         
+        <button
+            onClick={activateAllMics}
+          style={{
+            background: '#9c27b0',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+          >
+            🔌 Activate All
+          </button>
+
         <button
             onClick={startAllRecording}
           style={{
