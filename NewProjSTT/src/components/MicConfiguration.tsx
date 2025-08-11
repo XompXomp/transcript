@@ -9,19 +9,69 @@ interface MicConfigurationProps {
 
 const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUpdated }) => {
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  
+  // Topic mapping based on structure.md
+  const topicMapping = [
+    { id: '01', name: 'Urban Intelligence', zoneId: 1 },
+    { id: '02', name: 'New Energy', zoneId: 1 },
+    { id: '03', name: 'Mobility', zoneId: 1 },
+    { id: '04', name: 'Education and talent', zoneId: 1 },
+    { id: '05', name: 'Mission driven ecosystems', zoneId: 1 },
+    { id: '06', name: 'City funding', zoneId: 2 },
+    { id: '07', name: 'City branding and identity', zoneId: 2 },
+    { id: '08', name: 'Trade and Investment hubs', zoneId: 2 },
+    { id: '09', name: 'Planned Urban Expansion', zoneId: 2 },
+    { id: '10', name: 'City Diplomacy', zoneId: 2 },
+    { id: '11', name: 'City Leadership and Capacity building', zoneId: 2 },
+    { id: '12', name: 'Tourism and Visitor Economy', zoneId: 3 },
+    { id: '13', name: 'Affordable and Inclusive housing', zoneId: 3 },
+    { id: '14', name: 'Urban Health Systems', zoneId: 3 },
+    { id: '15', name: 'Active City Living', zoneId: 3 },
+    { id: '16', name: 'Urban Safety and Security', zoneId: 3 },
+    { id: '17', name: 'Social Value Infrastructure', zoneId: 3 },
+    { id: '18', name: 'Orange Economy and Cultural Investment', zoneId: 3 },
+    { id: '19', name: 'Urban Heat', zoneId: 4 },
+    { id: '20', name: 'Climate Adaptation and Mitigation', zoneId: 4 },
+    { id: '21', name: 'Decarbonizing the built environment', zoneId: 4 },
+    { id: '22', name: 'Nature Positive Cities', zoneId: 4 },
+    { id: '23', name: 'Blue Economy', zoneId: 4 },
+    { id: '24', name: 'Urban Water and Food Security', zoneId: 4 },
+    { id: '25', name: 'Zero Waste and Resource Circularity', zoneId: 4 }
+  ];
+
   const [sttEndpoints] = useState<STTEndpoint[]>([
-    {
-      id: 'endpoint1',
-      name: 'STT Server 1',
-      url: 'ws://172.22.225.138:11004/api/asr-streaming',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint2',
-      name: 'STT Server 2',
-      url: 'ws://172.22.225.139:11004/api/asr-streaming', // Example second endpoint
-      apiKey: 'public_token'
-    }
+    { id: 'endpoint1', name: 'STT Server 1', url: '', apiKey: 'public_token' },
+    { id: 'endpoint2', name: 'STT Server 2', url: '', apiKey: 'public_token' },
+    { id: 'endpoint3', name: 'STT Server 3', url: '', apiKey: 'public_token' },
+    { id: 'endpoint4', name: 'STT Server 4', url: '', apiKey: 'public_token' },
+    { id: 'endpoint5', name: 'STT Server 5', url: '', apiKey: 'public_token' },
+    { id: 'endpoint6', name: 'STT Server 6', url: '', apiKey: 'public_token' },
+    { id: 'endpoint7', name: 'STT Server 7', url: '', apiKey: 'public_token' },
+    { id: 'endpoint8', name: 'STT Server 8', url: '', apiKey: 'public_token' },
+    { id: 'endpoint9', name: 'STT Server 9', url: '', apiKey: 'public_token' },
+    { id: 'endpoint10', name: 'STT Server 10', url: '', apiKey: 'public_token' },
+    { id: 'endpoint11', name: 'STT Server 11', url: '', apiKey: 'public_token' },
+    { id: 'endpoint12', name: 'STT Server 12', url: '', apiKey: 'public_token' },
+    { id: 'endpoint13', name: 'STT Server 13', url: '', apiKey: 'public_token' },
+    { id: 'endpoint14', name: 'STT Server 14', url: '', apiKey: 'public_token' },
+    { id: 'endpoint15', name: 'STT Server 15', url: '', apiKey: 'public_token' },
+    { id: 'endpoint16', name: 'STT Server 16', url: '', apiKey: 'public_token' },
+    { id: 'endpoint17', name: 'STT Server 17', url: '', apiKey: 'public_token' },
+    { id: 'endpoint18', name: 'STT Server 18', url: '', apiKey: 'public_token' },
+    { id: 'endpoint19', name: 'STT Server 19', url: '', apiKey: 'public_token' },
+    { id: 'endpoint20', name: 'STT Server 20', url: '', apiKey: 'public_token' },
+    { id: 'endpoint21', name: 'STT Server 21', url: '', apiKey: 'public_token' },
+    { id: 'endpoint22', name: 'STT Server 22', url: '', apiKey: 'public_token' },
+    { id: 'endpoint23', name: 'STT Server 23', url: '', apiKey: 'public_token' },
+    { id: 'endpoint24', name: 'STT Server 24', url: '', apiKey: 'public_token' },
+    { id: 'endpoint25', name: 'STT Server 25', url: '', apiKey: 'public_token' },
+    { id: 'endpoint26', name: 'STT Server 26', url: '', apiKey: 'public_token' },
+    { id: 'endpoint27', name: 'STT Server 27', url: '', apiKey: 'public_token' },
+    { id: 'endpoint28', name: 'STT Server 28', url: '', apiKey: 'public_token' },
+    { id: 'endpoint29', name: 'STT Server 29', url: '', apiKey: 'public_token' },
+    { id: 'endpoint30', name: 'STT Server 30', url: '', apiKey: 'public_token' },
+    { id: 'endpoint31', name: 'STT Server 31', url: '', apiKey: 'public_token' },
+    { id: 'endpoint32', name: 'STT Server 32', url: '', apiKey: 'public_token' }
   ]);
   
   const [formData, setFormData] = useState({
@@ -178,7 +228,15 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
               </label>
               <select
                 value={formData.zoneId}
-                onChange={(e) => setFormData({ ...formData, zoneId: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const newZoneId = parseInt(e.target.value);
+                  setFormData({
+                    ...formData,
+                    zoneId: newZoneId,
+                    topicId: '',
+                    topicName: ''
+                  });
+                }}
                 required
                 style={{
                   width: '100%',
@@ -217,38 +275,68 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
               <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>
                 Topic ID:
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.topicId}
-                onChange={(e) => setFormData({ ...formData, topicId: e.target.value })}
+                onChange={(e) => {
+                  const selectedTopicId = e.target.value;
+                  const selectedTopic = topicMapping.find(topic => topic.id === selectedTopicId);
+                  setFormData({
+                    ...formData,
+                    topicId: selectedTopicId,
+                    topicName: selectedTopic ? selectedTopic.name : ''
+                  });
+                }}
                 required
-                placeholder="Enter Topic ID"
                 style={{
                   width: '100%',
                   padding: 8,
                   borderRadius: 4,
                   border: '1px solid #ddd'
                 }}
-              />
+              >
+                <option value="">Select Topic ID...</option>
+                {topicMapping
+                  .filter(topic => topic.zoneId === formData.zoneId)
+                  .map(topic => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.id}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>
                 Topic Name:
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.topicName}
-                onChange={(e) => setFormData({ ...formData, topicName: e.target.value })}
+                onChange={(e) => {
+                  const selectedTopicName = e.target.value;
+                  const selectedTopic = topicMapping.find(topic => topic.name === selectedTopicName);
+                  setFormData({
+                    ...formData,
+                    topicName: selectedTopicName,
+                    topicId: selectedTopic ? selectedTopic.id : ''
+                  });
+                }}
                 required
-                placeholder="Enter Topic Name"
                 style={{
                   width: '100%',
                   padding: 8,
                   borderRadius: 4,
                   border: '1px solid #ddd'
                 }}
-              />
+              >
+                <option value="">Select Topic Name...</option>
+                {topicMapping
+                  .filter(topic => topic.zoneId === formData.zoneId)
+                  .map(topic => (
+                    <option key={topic.id} value={topic.name}>
+                      {topic.name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             <div>
