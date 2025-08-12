@@ -260,7 +260,19 @@ const App: React.FC = () => {
 
   const loadAudioDevices = async () => {
     try {
+      console.log('Attempting to enumerate audio devices...');
+      
+      // First, try to get user permission by requesting microphone access
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('Microphone permission granted');
+      } catch (permError) {
+        console.warn('Microphone permission denied:', permError);
+      }
+      
       const devices = await navigator.mediaDevices.enumerateDevices();
+      console.log('All devices found:', devices.length);
+      
       const audioInputs = devices
         .filter(device => device.kind === 'audioinput')
         .map(device => ({
@@ -268,6 +280,10 @@ const App: React.FC = () => {
           label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
           groupId: device.groupId
         }));
+      
+      console.log('Audio input devices found:', audioInputs.length);
+      console.log('Audio devices:', audioInputs);
+      
       setAudioDevices(audioInputs);
     } catch (error) {
       console.error('Error loading audio devices:', error);
