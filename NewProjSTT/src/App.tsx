@@ -121,6 +121,78 @@ const App: React.FC = () => {
       name: 'STT Server 18',
       url: '',
       apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint19',
+      name: 'STT Server 19',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint20',
+      name: 'STT Server 20',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint21',
+      name: 'STT Server 21',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint22',
+      name: 'STT Server 22',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint23',
+      name: 'STT Server 23',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint24',
+      name: 'STT Server 24',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint25',
+      name: 'STT Server 25',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint26',
+      name: 'STT Server 26',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint27',
+      name: 'STT Server 27',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint28',
+      name: 'STT Server 28',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint29',
+      name: 'STT Server 29',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint30',
+      name: 'STT Server 30',
+      url: '',
+      apiKey: 'public_token'
     }
   ];
 
@@ -213,6 +285,30 @@ const App: React.FC = () => {
           return 8046;
         case 'endpoint18':
           return 8047;
+        case 'endpoint19':
+          return 8048;
+        case 'endpoint20':
+          return 8049;
+        case 'endpoint21':
+          return 8050;
+        case 'endpoint22':
+          return 8051;
+        case 'endpoint23':
+          return 8052;
+        case 'endpoint24':
+          return 8053;
+        case 'endpoint25':
+          return 8054;
+        case 'endpoint26':
+          return 8055;
+        case 'endpoint27':
+          return 8056;
+        case 'endpoint28':
+          return 8057;
+        case 'endpoint29':
+          return 8058;
+        case 'endpoint30':
+          return 8059;
         default:
           return 8030;
       }
@@ -907,13 +1003,13 @@ const App: React.FC = () => {
     
     console.log(`Starting recording for ${connectedMics.length} connected mics with 50ms delay between each`);
 
-    // Start recording for each connected mic with 50ms delay
+    // Start recording for each connected mic with 100ms delay
     for (let i = 0; i < connectedMics.length; i++) {
       const mic = connectedMics[i];
       
       // Add delay for all except the first mic
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       try {
@@ -1215,6 +1311,18 @@ const App: React.FC = () => {
                       <option value="16">16</option>
                       <option value="17">17</option>
                       <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                      <option value="21">21</option>
+                      <option value="22">22</option>
+                      <option value="23">23</option>
+                      <option value="24">24</option>
+                      <option value="25">25</option>
+                      <option value="26">26</option>
+                      <option value="27">27</option>
+                      <option value="28">28</option>
+                      <option value="29">29</option>
+                      <option value="30">30</option>
                    </select>
                  </div>
 
@@ -1250,6 +1358,18 @@ const App: React.FC = () => {
                       <option value="16">16</option>
                       <option value="17">17</option>
                       <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                      <option value="21">21</option>
+                      <option value="22">22</option>
+                      <option value="23">23</option>
+                      <option value="24">24</option>
+                      <option value="25">25</option>
+                      <option value="26">26</option>
+                      <option value="27">27</option>
+                      <option value="28">28</option>
+                      <option value="29">29</option>
+                      <option value="30">30</option>
                    </select>
                  </div>
 
@@ -1292,6 +1412,13 @@ const App: React.FC = () => {
                      <option value="Energy">Energy</option>
                      <option value="Environment">Environment</option>
                      <option value="Health">Health</option>
+                     <option value="Wellbeing">Wellbeing</option>
+                     <option value="Urban Design">Urban Design</option>
+                     <option value="Urban Planning">Urban Planning</option>
+                     <option value="Urban Management">Urban Management</option>
+                     <option value="Urban Policy">Urban Policy</option>
+                     <option value="Urban Research">Urban Research</option>
+                     <option value="Urban Strategy">Urban Strategy</option>
                    </select>
                  </div>
 
