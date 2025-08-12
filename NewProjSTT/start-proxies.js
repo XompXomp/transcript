@@ -63,6 +63,18 @@ const proxy10 = spawn('node', ['stt-proxy-10.js'], {
   cwd: __dirname
 });
 
+// Start eleventh proxy server
+const proxy11 = spawn('node', ['stt-proxy-11.js'], {
+  stdio: 'inherit',
+  cwd: __dirname
+});
+
+// Start twelfth proxy server
+const proxy12 = spawn('node', ['stt-proxy-12.js'], {
+  stdio: 'inherit',
+  cwd: __dirname
+});
+
 // Handle process termination
 process.on('SIGINT', () => {
   console.log('\nShutting down proxy servers...');
@@ -76,6 +88,8 @@ process.on('SIGINT', () => {
   proxy8.kill('SIGINT');
   proxy9.kill('SIGINT');
   proxy10.kill('SIGINT');
+  proxy11.kill('SIGINT');
+  proxy12.kill('SIGINT');
   process.exit(0);
 });
 
@@ -91,6 +105,8 @@ process.on('SIGTERM', () => {
   proxy8.kill('SIGTERM');
   proxy9.kill('SIGTERM');
   proxy10.kill('SIGTERM');
+  proxy11.kill('SIGTERM');
+  proxy12.kill('SIGTERM');
   process.exit(0);
 });
 
@@ -135,6 +151,14 @@ proxy10.on('close', (code) => {
   console.log(`Proxy 10 exited with code ${code}`);
 });
 
+proxy11.on('close', (code) => {
+  console.log(`Proxy 11 exited with code ${code}`);
+});
+
+proxy12.on('close', (code) => {
+  console.log(`Proxy 12 exited with code ${code}`);
+});
+
 console.log('All proxy servers are starting...');
 console.log('Proxy 1 will run on ws://localhost:8030');
 console.log('Proxy 2 will run on ws://localhost:8031');
@@ -146,4 +170,6 @@ console.log('Proxy 7 will run on ws://localhost:8036');
 console.log('Proxy 8 will run on ws://localhost:8037');
 console.log('Proxy 9 will run on ws://localhost:8038');
 console.log('Proxy 10 will run on ws://localhost:8039');
+console.log('Proxy 11 will run on ws://localhost:8040');
+console.log('Proxy 12 will run on ws://localhost:8041');
 console.log('Press Ctrl+C to stop all servers'); 

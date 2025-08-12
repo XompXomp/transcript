@@ -73,6 +73,18 @@ const App: React.FC = () => {
       name: 'STT Server 10',
       url: '',
       apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint11',
+      name: 'STT Server 11',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint12',
+      name: 'STT Server 12',
+      url: '',
+      apiKey: 'public_token'
     }
   ];
 
@@ -149,6 +161,10 @@ const App: React.FC = () => {
           return 8038;
         case 'endpoint10':
           return 8039;
+        case 'endpoint11':
+          return 8040;
+        case 'endpoint12':
+          return 8041;
         default:
           return 8030;
       }
@@ -1143,6 +1159,8 @@ const App: React.FC = () => {
                       <option value="08">08</option>
                       <option value="09">09</option>
                       <option value="10">10</option>
+                      <option value="11">11</option>  
+                      <option value="12">12</option>
                    </select>
                  </div>
 
@@ -1170,6 +1188,8 @@ const App: React.FC = () => {
                       <option value="08">08</option>
                       <option value="09">09</option>
                       <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
                    </select>
                  </div>
 
@@ -1198,6 +1218,8 @@ const App: React.FC = () => {
                      <option value="City Leadership and Economic Development">City Leadership and Economic Development</option>
                      <option value="Quality of Life">Quality of Life</option>
                      <option value="Environmental Solutions and Urban Regeneration">Environmental Solutions and Urban Regeneration</option>
+                     <option value="Air Pollution">Air Pollution</option>
+                     <option value="Water Pollution">Water Pollution</option>
                    </select>
                  </div>
 
