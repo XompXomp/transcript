@@ -43,6 +43,36 @@ const App: React.FC = () => {
       name: 'STT Server 5',
       url: '',
       apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint6',
+      name: 'STT Server 6',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint7',
+      name: 'STT Server 7',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint8',
+      name: 'STT Server 8',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint9',
+      name: 'STT Server 9',
+      url: '',
+      apiKey: 'public_token'
+    },
+    {
+      id: 'endpoint10',
+      name: 'STT Server 10',
+      url: '',
+      apiKey: 'public_token'
     }
   ];
 
@@ -109,6 +139,16 @@ const App: React.FC = () => {
           return 8033;
         case 'endpoint5':
           return 8034;
+        case 'endpoint6':
+          return 8035;
+        case 'endpoint7':
+          return 8036;
+        case 'endpoint8':
+          return 8037;
+        case 'endpoint9':
+          return 8038;
+        case 'endpoint10':
+          return 8039;
         default:
           return 8030;
       }
@@ -1098,6 +1138,11 @@ const App: React.FC = () => {
                       <option value="03">03</option>
                       <option value="04">04</option>
                       <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
                    </select>
                  </div>
 
@@ -1119,7 +1164,12 @@ const App: React.FC = () => {
                       <option value="02">02</option>
                       <option value="03">03</option>
                       <option value="04">04</option>
-                      <option value="05">05</option>              
+                      <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
                    </select>
                  </div>
 
@@ -1142,6 +1192,12 @@ const App: React.FC = () => {
                      <option value="Mobility">Mobility</option>
                      <option value="Education and talent">Education and talent</option>
                      <option value="Mission driven ecosystems">Mission driven ecosystems</option>
+                     <option value="Sustainability">Sustainability</option>
+                     <option value="Health and Wellbeing">Health and Wellbeing</option>
+                     <option value="Digital Transformation and Urban Futures">Digital Transformation and Urban Futures</option>
+                     <option value="City Leadership and Economic Development">City Leadership and Economic Development</option>
+                     <option value="Quality of Life">Quality of Life</option>
+                     <option value="Environmental Solutions and Urban Regeneration">Environmental Solutions and Urban Regeneration</option>
                    </select>
                  </div>
 
