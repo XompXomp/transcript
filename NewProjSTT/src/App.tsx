@@ -308,6 +308,25 @@ const App: React.FC = () => {
     }
   };
 
+  const requestMicrophonePermission = async () => {
+    try {
+      // Request microphone access to trigger permission prompt
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Stop the stream immediately (we just needed the permission)
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Reload devices with proper labels now that we have permission
+      await loadAudioDevices();
+      
+      setSuccessMessage('Microphone access granted! Devices loaded.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Error requesting microphone permission:', error);
+      alert('Failed to get microphone permission. Please allow microphone access in your browser settings.');
+    }
+  };
+
 
 
   const addMic = async () => {
@@ -1002,20 +1021,35 @@ const App: React.FC = () => {
           justifyContent: 'space-between', 
           alignItems: 'center' 
         }}>
-          <button
-            onClick={addMic}
-            style={{
-              background: '#4caf50',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              padding: '12px 24px',
-              fontSize: 16,
-              cursor: 'pointer'
-            }}
-          >
-            ➕ Add New Microphone
-        </button>
+                     <button
+             onClick={addMic}
+             style={{
+               background: '#4caf50',
+               color: 'white',
+               border: 'none',
+               borderRadius: 8,
+               padding: '12px 24px',
+               fontSize: 16,
+               cursor: 'pointer'
+             }}
+           >
+             ➕ Add New Microphone
+         </button>
+         
+         <button
+           onClick={requestMicrophonePermission}
+           style={{
+             background: '#2196f3',
+             color: 'white',
+             border: 'none',
+             borderRadius: 8,
+             padding: '12px 24px',
+             fontSize: 16,
+             cursor: 'pointer'
+           }}
+         >
+           🎤 Request Microphone Access
+         </button>
         
         <button
             onClick={startAllRecording}
