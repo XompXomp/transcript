@@ -3,15 +3,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import msgpack from 'msgpack-lite';
 import { MicConfig, Transcript, STTEndpoint, AudioDevice } from './types';
 import { databaseService } from './databaseService';
+import { WebSocketManager } from './WebSocketManager';
+import { AudioManager } from './AudioManager';
 
 const App: React.FC = () => {
   const [mics, setMics] = useState<MicConfig[]>([]);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
-  const [micConnections, setMicConnections] = useState<Map<string, WebSocket>>(new Map());
   const [micStatuses, setMicStatuses] = useState<Map<string, { isConnected: boolean; status: string }>>(new Map());
   const [micTranscripts, setMicTranscripts] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // New architecture managers
+  const webSocketManagerRef = useRef<WebSocketManager | null>(null);
+  const audioManagerRef = useRef<AudioManager | null>(null);
 
   const sttEndpoints: STTEndpoint[] = [
     {
@@ -200,6 +205,70 @@ const App: React.FC = () => {
     loadMics();
     loadAudioDevices();
     databaseService.initializeFromStorage();
+    
+    // Initialize new architecture managers
+    const initializeManagers = async () => {
+      try {
+        // Initialize WebSocket Manager
+        webSocketManagerRef.current = new WebSocketManager(sttEndpoints);
+        
+        // Initialize Audio Manager
+        audioManagerRef.current = new AudioManager(webSocketManagerRef.current);
+        await audioManagerRef.current.initialize();
+        
+        console.log('✅ New architecture managers initialized');
+      } catch (error) {
+        console.error('Failed to initialize managers:', error);
+      }
+    };
+    
+    initializeManagers();
+    
+    // Add STT message event listener
+    const handleSTTMessage = (event: CustomEvent) => {
+      const { micId, data } = event.detail;
+      try {
+        console.log(`🎯 App received STT message for mic ${micId}:`, data);
+        
+        // Handle Word messages (individual words)
+        if (data.type === 'Word' && data.text) {
+          console.log(`📝 Adding word "${data.text}" to transcript for mic ${micId}`);
+          setMicTranscripts(prev => {
+            const currentTranscript = prev.get(micId) || '';
+            const newTranscript = currentTranscript + (currentTranscript ? ' ' : '') + data.text;
+            console.log(`✅ Updated transcript for mic ${micId}:`, newTranscript);
+            return new Map(prev).set(micId, newTranscript);
+          });
+        }
+        // Handle Step messages (Voice Activity Detection - not transcription)
+        else if (data.type === 'Step') {
+          console.log(`🔇 VAD Step message for mic ${micId} - pause prediction: [${data.prs?.join(', ') || 'N/A'}]`);
+          // Step messages are for VAD (Voice Activity Detection), not transcription
+          // They contain pause prediction probabilities, not text
+        }
+        // Handle other message types
+        else {
+          console.log(`🔍 Received message type "${data.type}" for mic ${micId}:`, data);
+          // Log the full structure to understand what we're getting
+          console.log(`📋 Full message structure:`, JSON.stringify(data, null, 2));
+        }
+      } catch (error) {
+        console.error('❌ Error processing STT message:', error);
+      }
+    };
+    
+    window.addEventListener('stt-message', handleSTTMessage as EventListener);
+    
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('stt-message', handleSTTMessage as EventListener);
+      if (audioManagerRef.current) {
+        audioManagerRef.current.destroy();
+      }
+      if (webSocketManagerRef.current) {
+        webSocketManagerRef.current.closeAllConnections();
+      }
+    };
   }, []);
 
   const loadMics = async () => {
@@ -239,127 +308,7 @@ const App: React.FC = () => {
     }
   };
 
-  const createSTTConnection = async (mic: MicConfig) => {
-    const endpoint = sttEndpoints.find(e => e.id === mic.sttEndpoint);
-    if (!endpoint) {
-      console.error('STT endpoint not found for mic:', mic.micId);
-      return null;
-    }
 
-    // Map endpoint to proxy port
-    const getProxyPortForEndpoint = (endpointId: string): number => {
-      switch (endpointId) {
-        case 'endpoint1':
-          return 8030;
-        case 'endpoint2':
-          return 8031;
-        case 'endpoint3':
-          return 8032;
-        case 'endpoint4':
-          return 8033;
-        case 'endpoint5':
-          return 8034;
-        case 'endpoint6':
-          return 8035;
-        case 'endpoint7':
-          return 8036;
-        case 'endpoint8':
-          return 8037;
-        case 'endpoint9':
-          return 8038;
-        case 'endpoint10':
-          return 8039;
-        case 'endpoint11':
-          return 8040;
-        case 'endpoint12':
-          return 8041;
-        case 'endpoint13':
-          return 8042;
-        case 'endpoint14':
-          return 8043;
-        case 'endpoint15':
-          return 8044;
-        case 'endpoint16':
-          return 8045;
-        case 'endpoint17':
-          return 8046;
-        case 'endpoint18':
-          return 8047;
-        case 'endpoint19':
-          return 8048;
-        case 'endpoint20':
-          return 8049;
-        case 'endpoint21':
-          return 8050;
-        case 'endpoint22':
-          return 8051;
-        case 'endpoint23':
-          return 8052;
-        case 'endpoint24':
-          return 8053;
-        case 'endpoint25':
-          return 8054;
-        case 'endpoint26':
-          return 8055;
-        case 'endpoint27':
-          return 8056;
-        case 'endpoint28':
-          return 8057;
-        case 'endpoint29':
-          return 8058;
-        case 'endpoint30':
-          return 8059;
-        default:
-          return 8030;
-      }
-    };
-
-    const proxyPort = getProxyPortForEndpoint(mic.sttEndpoint);
-    const proxyUrl = `ws://localhost:${proxyPort}`;
-    
-    return new Promise<WebSocket>((resolve, reject) => {
-      const ws = new WebSocket(proxyUrl);
-      
-      ws.onopen = () => {
-        console.log(`STT WebSocket connected for mic ${mic.micId}`);
-        setMicStatuses(prev => new Map(prev).set(mic.micId, { 
-          isConnected: true, 
-          status: 'Connected to STT server' 
-        }));
-        
-        // Send authentication
-      try {
-        const authMessage = {
-          type: "Auth",
-            token: endpoint.apiKey
-        };
-        const encoded = msgpack.encode(authMessage);
-          ws.send(encoded);
-      } catch (e) {
-        console.log('Could not send auth message:', e);
-      }
-        
-        resolve(ws);
-      };
-      
-      ws.onerror = (error) => {
-        console.error(`STT WebSocket error for mic ${mic.micId}:`, error);
-        setMicStatuses(prev => new Map(prev).set(mic.micId, { 
-          isConnected: false, 
-          status: 'Connection error' 
-        }));
-        reject(error);
-      };
-      
-      ws.onclose = () => {
-        console.log(`STT WebSocket closed for mic ${mic.micId}`);
-        setMicStatuses(prev => new Map(prev).set(mic.micId, { 
-          isConnected: false, 
-          status: 'Disconnected from STT server' 
-        }));
-      };
-    });
-  };
 
   const addMic = async () => {
     const newMic: Omit<MicConfig, 'micId'> = {
@@ -414,15 +363,15 @@ const App: React.FC = () => {
           newStatuses.delete(micId);
           return newStatuses;
         });
-        setMicConnections(prev => {
-          const newConnections = new Map(prev);
-          const connection = newConnections.get(micId);
-          if (connection) {
-            connection.close();
-            newConnections.delete(micId);
-          }
-          return newConnections;
-        });
+        
+        // Clean up new architecture connections
+        if (webSocketManagerRef.current) {
+          webSocketManagerRef.current.closeConnection(micId);
+        }
+        if (audioManagerRef.current) {
+          audioManagerRef.current.stopRecording(micId);
+        }
+        
         setMicTranscripts(prev => {
           const newTranscripts = new Map(prev);
           newTranscripts.delete(micId);
@@ -444,22 +393,28 @@ const App: React.FC = () => {
       await updateMic(micId, { isActive: newActiveState });
       
       if (newActiveState) {
-        // Create connection
-        const connection = await createSTTConnection(mic);
-        if (connection) {
-          setMicConnections(prev => new Map(prev).set(micId, connection));
+        // Create connection using new architecture
+        if (webSocketManagerRef.current) {
+          const success = await webSocketManagerRef.current.createConnection(mic);
+          if (success) {
+            setMicStatuses(prev => new Map(prev).set(micId, { 
+              isConnected: true, 
+              status: 'Ready to record' 
+            }));
+          }
         }
       } else {
-        // Close connection
-        const connection = micConnections.get(micId);
-        if (connection) {
-          connection.close();
-          setMicConnections(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(micId);
-            return newMap;
-          });
+        // Close connection using new architecture
+        if (webSocketManagerRef.current) {
+          webSocketManagerRef.current.closeConnection(micId);
         }
+        if (audioManagerRef.current) {
+          audioManagerRef.current.stopRecording(micId);
+        }
+        setMicStatuses(prev => new Map(prev).set(micId, { 
+          isConnected: false, 
+          status: 'Disconnected' 
+        }));
       }
     } catch (error) {
       console.error('Error toggling mic active state:', error);
@@ -470,90 +425,30 @@ const App: React.FC = () => {
     const mic = mics.find(m => m.micId === micId);
     if (!mic) return;
 
-    const connection = micConnections.get(micId);
-    if (!connection || connection.readyState !== WebSocket.OPEN) {
-      alert('STT connection not available for this microphone');
-      return;
-    }
-
     const isCurrentlyRecording = isRecording(micId);
     
     if (isCurrentlyRecording) {
-      // Stop recording
+      // Stop recording using new architecture
+      if (audioManagerRef.current) {
+        audioManagerRef.current.stopRecording(micId);
+      }
       await stopRecording(micId);
     } else {
-      // Start recording
+      // Start recording using new architecture
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: { deviceId: mic.deviceId } 
-        });
-        
-        const audioContext = new AudioContext({ sampleRate: 24000 });
-        const source = audioContext.createMediaStreamSource(stream);
-        const processor = audioContext.createScriptProcessor(1024, 1, 1);
-        
-        let transcript = '';
-        
-        processor.onaudioprocess = (event) => {
-          if (connection.readyState === WebSocket.OPEN) {
-            const inputData = event.inputBuffer.getChannelData(0);
-            const pcmData = Array.from(inputData);
-            
-            const message = {
-              type: 'Audio',
-              pcm: pcmData
-            };
-            const encoded = msgpack.encode(message);
-            connection.send(encoded);
+        if (audioManagerRef.current) {
+          const success = await audioManagerRef.current.startRecording(mic);
+          if (success) {
+            setMicStatuses(prev => new Map(prev).set(micId, { 
+              isConnected: true, 
+              status: 'Recording...' 
+            }));
+          } else {
+            alert('Failed to start recording. Please check microphone permissions.');
           }
-        };
-        
-        // Handle STT responses - always set the handler for each recording session
-        connection.onmessage = (event) => {
-          try {
-            console.log(`Received message for mic ${micId}:`, event.data);
-            if (event.data instanceof Blob) {
-              event.data.arrayBuffer().then(buffer => {
-                const uint8Array = new Uint8Array(buffer);
-                const data = msgpack.decode(uint8Array);
-                console.log(`Decoded data for mic ${micId}:`, data);
-                
-                if (data.type === 'Word' && data.text) {
-                  console.log(`Adding word "${data.text}" to transcript for mic ${micId}`);
-                  setMicTranscripts(prev => {
-                    const currentTranscript = prev.get(micId) || '';
-                    const newTranscript = currentTranscript + (currentTranscript ? ' ' : '') + data.text;
-                    console.log(`Updated transcript for mic ${micId}:`, newTranscript);
-                    return new Map(prev).set(micId, newTranscript);
-                  });
-                }
-              });
-            }
-          } catch (e) {
-            console.error('Error processing STT message:', e);
-          }
-        };
-        
-        source.connect(processor);
-        processor.connect(audioContext.destination);
-        
-        // Store the processor and stream for cleanup
-        setMicConnections(prev => {
-          const newMap = new Map(prev);
-          const connection = newMap.get(micId);
-          if (connection) {
-            (connection as any).processor = processor;
-            (connection as any).stream = stream;
-            (connection as any).audioContext = audioContext;
-          }
-          return newMap;
-        });
-        
-        setMicStatuses(prev => new Map(prev).set(micId, { 
-          isConnected: true, 
-          status: 'Recording...' 
-        }));
-        
+        } else {
+          alert('Audio manager not initialized');
+        }
       } catch (error) {
         console.error('Error starting recording for mic:', micId, error);
         alert('Error accessing microphone. Please check permissions.');
@@ -562,27 +457,7 @@ const App: React.FC = () => {
   };
 
   const stopRecording = async (micId: string) => {
-    const connection = micConnections.get(micId);
-    if (connection) {
-      // Clean up audio resources
-      if ((connection as any).processor) {
-        const processor = (connection as any).processor;
-        processor.disconnect();
-        (connection as any).processor = null;
-      }
-      
-      if ((connection as any).stream) {
-        const stream = (connection as any).stream;
-        stream.getTracks().forEach((track: any) => track.stop());
-        (connection as any).stream = null;
-      }
-      
-      if ((connection as any).audioContext) {
-        const audioContext = (connection as any).audioContext;
-        audioContext.close();
-        (connection as any).audioContext = null;
-      }
-    }
+    // Audio cleanup is now handled by AudioManager
     
     const transcript = micTranscripts.get(micId);
     console.log(`Stopping recording for mic ${micId}, transcript:`, transcript);
