@@ -53,6 +53,27 @@ export class AudioManager {
   }
 
   /**
+   * Validate that a device exists and is accessible
+   */
+  async validateDevice(deviceId: string): Promise<boolean> {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioDevices = devices.filter(device => device.kind === 'audioinput');
+      const deviceExists = audioDevices.some(device => device.deviceId === deviceId);
+      
+      if (!deviceExists) {
+        console.error(`Device ${deviceId} not found. Available devices:`, audioDevices.map(d => ({ id: d.deviceId, label: d.label })));
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating device:', error);
+      return false;
+    }
+  }
+
+  /**
    * Start recording audio for a microphone
    */
   async startRecording(mic: MicConfig): Promise<boolean> {
@@ -62,10 +83,23 @@ export class AudioManager {
     }
 
     try {
-      // Get microphone access
+      // Validate deviceId
+      if (!mic.deviceId || mic.deviceId.trim() === '') {
+        console.error(`No device selected for mic ${mic.micId}. Please select a microphone device.`);
+        return false;
+      }
+
+      // Validate that the device exists
+      const deviceValid = await this.validateDevice(mic.deviceId);
+      if (!deviceValid) {
+        console.error(`Invalid device selected for mic ${mic.micId}. Device ${mic.deviceId} not found.`);
+        return false;
+      }
+
+      // Get microphone access with specific device
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          deviceId: mic.deviceId,
+          deviceId: { exact: mic.deviceId }, // Use exact deviceId to ensure specific microphone
           sampleRate: 24000, // Unmute STT expects 24kHz
           channelCount: 1,   // Mono
           echoCancellation: false,
