@@ -447,10 +447,7 @@ const App: React.FC = () => {
     const isCurrentlyRecording = isRecording(micId);
     
     if (isCurrentlyRecording) {
-      // Stop recording using new architecture
-      if (audioManagerRef.current) {
-        audioManagerRef.current.stopRecording(micId);
-      }
+      // Stop recording - this will handle both audio stopping and transcript saving
       await stopRecording(micId);
     } else {
       // Start recording using new architecture
@@ -476,8 +473,14 @@ const App: React.FC = () => {
   };
 
   const stopRecording = async (micId: string) => {
-    // Audio cleanup is now handled by AudioManager
+    console.log(`Stopping recording for mic ${micId}`);
     
+    // First, stop the actual audio recording
+    if (audioManagerRef.current) {
+      audioManagerRef.current.stopRecording(micId);
+    }
+    
+    // Then handle transcript saving
     const transcript = micTranscripts.get(micId);
     console.log(`Stopping recording for mic ${micId}, transcript:`, transcript);
     if (transcript) {
