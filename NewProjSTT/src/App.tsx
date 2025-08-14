@@ -1423,28 +1423,34 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Transcript */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-           <div style={{
-                    height: '60px',
-                    overflowY: 'auto',
-                    padding: '4px',
-                    background: '#f8f9fa',
-                    border: '1px solid #e9ecef',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontFamily: 'monospace'
-                  }}>
-                    {transcript ? (
-                      <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                        {transcript}
-                      </div>
-                    ) : (
-                      <div style={{ color: '#999', fontStyle: 'italic' }}>
-                        No transcript...
-           </div>
-         )}
-       </div>
+                                 {/* Transcript */}
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div 
+              ref={(el) => {
+                if (el && transcript) {
+                  el.scrollTop = el.scrollHeight;
+                }
+              }}
+              style={{
+                     height: '60px',
+                     overflowY: 'auto',
+                     padding: '4px',
+                     background: '#f8f9fa',
+                     border: '1px solid #e9ecef',
+                     borderRadius: 4,
+                     fontSize: 11,
+                     fontFamily: 'monospace'
+                   }}>
+                     {transcript ? (
+                       <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+                         {transcript}
+                       </div>
+                     ) : (
+                       <div style={{ color: '#999', fontStyle: 'italic' }}>
+                         No transcript...
+            </div>
+          )}
+        </div>
       
                   {transcript && (
                     <button
