@@ -6,7 +6,7 @@ interface AudioStream {
   mediaStream: MediaStream;
   audioContext: AudioContext;
   source: MediaStreamAudioSourceNode;
-  processor: ScriptProcessorNode;
+  processor: AudioWorkletNode | ScriptProcessorNode;
   isRecording: boolean;
   sampleRate: number;
   chunkSize: number;
@@ -16,7 +16,6 @@ interface AudioStream {
 export class AudioManager {
   private audioStreams: Map<string, AudioStream> = new Map();
   private webSocketManager: WebSocketManager;
-  private audioWorker: Worker | null = null;
   private isInitialized = false;
 
   constructor(webSocketManager: WebSocketManager) {
@@ -24,27 +23,12 @@ export class AudioManager {
   }
 
   /**
-   * Initialize the audio manager with Web Workers for processing
+   * Initialize the audio manager
    */
   async initialize(): Promise<boolean> {
     try {
-      // Create Web Worker for audio processing
-      this.audioWorker = new Worker(new URL('./audioWorker.ts', import.meta.url));
-      
-      this.audioWorker.onmessage = (event) => {
-        const { micId, audioData, error } = event.data;
-        
-        if (error) {
-          console.error(`Audio processing error for mic ${micId}:`, error);
-          return;
-        }
-        
-        // Send processed audio data to WebSocket manager
-        this.webSocketManager.sendAudioData(micId, audioData);
-      };
-
       this.isInitialized = true;
-      console.log('✅ Audio Manager initialized with Web Worker');
+      console.log('✅ Audio Manager initialized');
       return true;
     } catch (error) {
       console.error('Failed to initialize Audio Manager:', error);
@@ -112,52 +96,60 @@ export class AudioManager {
       const audioContext = new AudioContext({ sampleRate: 24000 });
       const source = audioContext.createMediaStreamSource(mediaStream);
       
-      // Create script processor for audio processing - smaller chunks for lower latency
-      const processor = audioContext.createScriptProcessor(1024, 1, 1); // 1024 samples = ~43ms at 24kHz (power of 2)
+      // Load AudioWorklet processor
+      await audioContext.audioWorklet.addModule(new URL('./audioWorkletProcessor.js', import.meta.url));
+      
+      // Create AudioWorklet node for audio processing
+      const workletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1]
+      });
       
       const audioStream: AudioStream = {
         micId: mic.micId,
         mediaStream,
         audioContext,
         source,
-        processor,
+        processor: workletNode as any, // Type compatibility
         isRecording: false,
         sampleRate: 24000,
         chunkSize: 1024
       };
 
       // Set up audio processing
-      processor.onaudioprocess = (event) => {
+      workletNode.port.onmessage = (event) => {
         if (!audioStream.isRecording) return;
         
-        const inputBuffer = event.inputBuffer;
-        const inputData = inputBuffer.getChannelData(0);
-        
-        // Debug: Check if we're getting actual audio data
-        const maxAmplitude = Math.max(...inputData.map(Math.abs));
-        const avgAmplitude = inputData.reduce((sum, val) => sum + Math.abs(val), 0) / inputData.length;
-        
-        // Log audio levels every 50 chunks (about every 4 seconds)
-        if (!audioStream.debugCounter) audioStream.debugCounter = 0;
-        audioStream.debugCounter++;
-        
-        if (audioStream.debugCounter % 50 === 0) {
-          console.log(`🎵 Mic ${mic.micId} - Max amplitude: ${maxAmplitude.toFixed(4)}, Avg amplitude: ${avgAmplitude.toFixed(4)}`);
+        if (event.data.type === 'audioData') {
+          const inputData = event.data.data;
           
-          // Check if we're getting silence
-          if (maxAmplitude < 0.001) {
-            console.warn(`⚠️ Mic ${mic.micId} - Very low audio levels detected! Possible silence or microphone issue.`);
+          // Debug: Check if we're getting actual audio data
+          const maxAmplitude = Math.max(...inputData.map(Math.abs));
+          const avgAmplitude = inputData.reduce((sum: number, val: number) => sum + Math.abs(val), 0) / inputData.length;
+          
+          // Log audio levels every 50 chunks (about every 4 seconds)
+          if (!audioStream.debugCounter) audioStream.debugCounter = 0;
+          audioStream.debugCounter++;
+          
+          if (audioStream.debugCounter % 50 === 0) {
+            console.log(`🎵 Mic ${mic.micId} - Max amplitude: ${maxAmplitude.toFixed(4)}, Avg amplitude: ${avgAmplitude.toFixed(4)}`);
+            
+            // Check if we're getting silence
+            if (maxAmplitude < 0.001) {
+              console.warn(`⚠️ Mic ${mic.micId} - Very low audio levels detected! Possible silence or microphone issue.`);
+            }
           }
+          
+          // Send raw Float32Array directly to WebSocket manager
+          // Unmute STT expects float32 values, not int16
+          this.webSocketManager.sendAudioData(mic.micId, new Uint8Array(inputData.buffer));
         }
-        
-        // Send raw Float32Array directly to WebSocket manager
-        // Unmute STT expects float32 values, not int16
-        this.webSocketManager.sendAudioData(mic.micId, new Uint8Array(inputData.buffer));
       };
 
       // Connect audio nodes
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+      source.connect(workletNode);
+      workletNode.connect(audioContext.destination);
 
       this.audioStreams.set(mic.micId, audioStream);
       audioStream.isRecording = true;
@@ -273,12 +265,6 @@ export class AudioManager {
    */
   destroy(): void {
     this.stopAllRecordings();
-    
-    if (this.audioWorker) {
-      this.audioWorker.terminate();
-      this.audioWorker = null;
-    }
-    
     this.isInitialized = false;
     console.log('🧹 Audio Manager destroyed');
   }
