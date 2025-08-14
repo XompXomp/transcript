@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [micStatuses, setMicStatuses] = useState<Map<string, { isConnected: boolean; status: string }>>(new Map());
   const [micTranscripts, setMicTranscripts] = useState<Map<string, string>>(new Map());
+  const [micLastMessageTime, setMicLastMessageTime] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
@@ -230,6 +231,9 @@ const App: React.FC = () => {
       try {
         console.log(`🎯 App received STT message for mic ${micId}:`, data);
         
+        // Update last message time for ANY message received (not just words)
+        setMicLastMessageTime(prev => new Map(prev).set(micId, Date.now()));
+        
         // Handle Word messages (individual words)
         if (data.type === 'Word' && data.text) {
           console.log(`📝 Adding word "${data.text}" to transcript for mic ${micId}`);
@@ -396,6 +400,13 @@ const App: React.FC = () => {
           newTranscripts.delete(micId);
           return newTranscripts;
         });
+        
+        // Clear the last message time for this mic
+        setMicLastMessageTime(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(micId);
+          return newMap;
+        });
       } catch (error) {
         console.error('Error deleting mic:', error);
       }
@@ -521,12 +532,19 @@ const App: React.FC = () => {
             console.log(`Created new transcript for table ${mic.tableId}`);
           }
           
-          // Clear the transcript
-          setMicTranscripts(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(micId);
-            return newMap;
-          });
+                     // Clear the transcript
+           setMicTranscripts(prev => {
+             const newMap = new Map(prev);
+             newMap.delete(micId);
+             return newMap;
+           });
+           
+           // Clear the last message time for this mic
+           setMicLastMessageTime(prev => {
+             const newMap = new Map(prev);
+             newMap.delete(micId);
+             return newMap;
+           });
           
           // Show success message
           setSuccessMessage('Transcript saved successfully!');
@@ -547,6 +565,15 @@ const App: React.FC = () => {
   const isRecording = (micId: string) => {
     const status = micStatuses.get(micId);
     return status?.status === 'Recording...';
+  };
+
+  const isTranscriptTimedOut = (micId: string) => {
+    const lastMessageTime = micLastMessageTime.get(micId);
+    if (!lastMessageTime) return false;
+    
+    const currentTime = Date.now();
+    const timeSinceLastMessage = currentTime - lastMessageTime;
+    return timeSinceLastMessage > 3000; // 3 seconds
   };
 
   const downloadTranscript = (micId: string) => {
@@ -1029,20 +1056,26 @@ const App: React.FC = () => {
       padding: 20,
       fontFamily: 'Arial, sans-serif'
     }}>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
+             <style>
+         {`
+           @keyframes slideIn {
+             from {
+               transform: translateX(100%);
+               opacity: 0;
+             }
+             to {
+               transform: translateX(0);
+               opacity: 1;
+             }
+           }
+           
+           @keyframes pulse {
+             0% { opacity: 1; }
+             50% { opacity: 0.5; }
+             100% { opacity: 1; }
+           }
+         `}
+       </style>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -1445,20 +1478,38 @@ const App: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Status */}
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    padding: '4px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                    background: status?.isConnected ? '#e8f5e8' : '#ffe8e8',
-                    color: status?.isConnected ? '#2e7d32' : '#c62828',
-                    border: `1px solid ${status?.isConnected ? '#4caf50' : '#f44336'}`
-                  }}>
-                    {status?.status || 'Unknown'}
-                  </div>
-                </div>
+                                 {/* Status */}
+                 <div style={{ textAlign: 'center' }}>
+                   <div style={{
+                     padding: '4px 8px',
+                     borderRadius: 4,
+                     fontSize: 11,
+                     fontWeight: 'bold',
+                     background: status?.isConnected ? '#e8f5e8' : '#ffe8e8',
+                     color: status?.isConnected ? '#2e7d32' : '#c62828',
+                     border: `1px solid ${status?.isConnected ? '#4caf50' : '#f44336'}`
+                   }}>
+                     {status?.status || 'Unknown'}
+                   </div>
+                   
+                   {/* Transcript Timeout Indicator */}
+                   {recording && (
+                     <div style={{
+                       marginTop: '4px',
+                       padding: '2px 6px',
+                       borderRadius: 3,
+                       fontSize: 10,
+                       fontWeight: 'bold',
+                       background: isTranscriptTimedOut(mic.micId) ? '#ffebee' : '#e8f5e8',
+                       color: isTranscriptTimedOut(mic.micId) ? '#c62828' : '#2e7d32',
+                       border: `1px solid ${isTranscriptTimedOut(mic.micId) ? '#f44336' : '#4caf50'}`,
+                       animation: isTranscriptTimedOut(mic.micId) ? 'pulse 1s infinite' : 'none'
+                     }}
+                     title={isTranscriptTimedOut(mic.micId) ? "No STT messages in 3+ seconds" : "Receiving STT messages"}>
+                       {isTranscriptTimedOut(mic.micId) ? '⚠️ TIMEOUT' : '✅ ACTIVE'}
+                     </div>
+                   )}
+                 </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>

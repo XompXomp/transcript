@@ -234,6 +234,9 @@ export class WebSocketManager {
       });
       console.log(`📡 Dispatching STT event for mic ${micId}:`, event.detail);
       window.dispatchEvent(event);
+      
+      // Additional debug: Check if the event was dispatched
+      console.log(`🔍 Event dispatched for mic ${micId}, event detail:`, event.detail);
     } catch (error) {
       console.error(`❌ Error handling STT message for mic ${micId}:`, error);
     }
