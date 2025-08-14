@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MicConfig, AudioDevice, STTEndpoint } from '../types';
 import { databaseService } from '../databaseService';
+import { ASIOAudioManager } from '../ASIOAudioManager';
 
 interface MicConfigurationProps {
   onMicAdded: (micId: string) => void;
@@ -9,6 +10,10 @@ interface MicConfigurationProps {
 
 const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUpdated }) => {
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [asioChannels, setAsioChannels] = useState<{id: number, name: string}[]>([]);
+  const [useASIO, setUseASIO] = useState(true); // Default to ASIO
+  const [asioManager, setAsioManager] = useState<ASIOAudioManager | null>(null);
+  
   const [sttEndpoints] = useState<STTEndpoint[]>([
     {
       id: 'endpoint1',
@@ -37,9 +42,41 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    initializeASIO();
     loadAudioDevices();
     loadMics();
   }, []);
+
+  const initializeASIO = async () => {
+    try {
+      // Create a dummy WebSocketManager for ASIO initialization
+      const dummyWebSocketManager = {
+        sendAudioData: () => {} // Dummy function
+      } as any;
+      
+      const asioMgr = new ASIOAudioManager(dummyWebSocketManager);
+      const connected = await asioMgr.connect();
+      
+      if (connected) {
+        setAsioManager(asioMgr);
+        // Get channels after a short delay to allow connection
+        setTimeout(async () => {
+          try {
+            const channels = await asioMgr.getChannels();
+            setAsioChannels(channels.map(c => ({ id: c.id, name: c.name })));
+          } catch (error) {
+            console.error('Failed to get ASIO channels:', error);
+          }
+        }, 1000);
+      } else {
+        console.warn('Failed to connect to ASIO Bridge, falling back to browser audio');
+        setUseASIO(false);
+      }
+    } catch (error) {
+      console.warn('ASIO not available, falling back to browser audio:', error);
+      setUseASIO(false);
+    }
+  };
 
   const loadAudioDevices = async () => {
     try {
@@ -71,15 +108,27 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
     setIsLoading(true);
 
     try {
-      const selectedDevice = audioDevices.find(device => device.deviceId === formData.deviceId);
-      if (!selectedDevice) {
-        alert('Please select a microphone device');
-        return;
+      let deviceName = '';
+      
+      if (useASIO) {
+        const selectedChannel = asioChannels.find(channel => channel.id.toString() === formData.deviceId);
+        if (!selectedChannel) {
+          alert('Please select an ASIO channel');
+          return;
+        }
+        deviceName = selectedChannel.name;
+      } else {
+        const selectedDevice = audioDevices.find(device => device.deviceId === formData.deviceId);
+        if (!selectedDevice) {
+          alert('Please select a microphone device');
+          return;
+        }
+        deviceName = selectedDevice.label;
       }
 
       const micId = await databaseService.addMic({
         deviceId: formData.deviceId,
-        deviceName: selectedDevice.label,
+        deviceName: deviceName,
         zoneId: formData.zoneId,
         tableId: formData.tableId,
         topicId: formData.topicId,
@@ -150,8 +199,29 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
             <div>
               <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>
-                Microphone Device:
+                Audio Source:
               </label>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ marginRight: 15 }}>
+                  <input
+                    type="radio"
+                    checked={useASIO}
+                    onChange={() => setUseASIO(true)}
+                    style={{ marginRight: 5 }}
+                  />
+                  ASIO Channels
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    checked={!useASIO}
+                    onChange={() => setUseASIO(false)}
+                    style={{ marginRight: 5 }}
+                  />
+                  Browser Microphones
+                </label>
+              </div>
+              
               <select
                 value={formData.deviceId}
                 onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
@@ -163,13 +233,29 @@ const MicConfiguration: React.FC<MicConfigurationProps> = ({ onMicAdded, onMicUp
                   border: '1px solid #ddd'
                 }}
               >
-                <option value="">Select a microphone...</option>
-                {audioDevices.map(device => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label}
-                  </option>
-                ))}
+                <option value="">
+                  {useASIO ? 'Select an ASIO channel...' : 'Select a microphone...'}
+                </option>
+                {useASIO ? (
+                  asioChannels.map(channel => (
+                    <option key={channel.id} value={channel.id.toString()}>
+                      {channel.name}
+                    </option>
+                  ))
+                ) : (
+                  audioDevices.map(device => (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </option>
+                  ))
+                )}
               </select>
+              
+              {useASIO && asioChannels.length === 0 && (
+                <div style={{ color: '#ff5722', fontSize: 12, marginTop: 5 }}>
+                  No ASIO channels available. Make sure the ASIO Bridge is running.
+                </div>
+              )}
             </div>
 
             <div>

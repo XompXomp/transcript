@@ -5,6 +5,7 @@ import { MicConfig, Transcript, STTEndpoint, AudioDevice } from './types';
 import { databaseService } from './databaseService';
 import { WebSocketManager } from './WebSocketManager';
 import { AudioManager } from './AudioManager';
+import { ASIOAudioManager } from './ASIOAudioManager';
 
 const App: React.FC = () => {
   const [mics, setMics] = useState<MicConfig[]>([]);
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   // New architecture managers
   const webSocketManagerRef = useRef<WebSocketManager | null>(null);
   const audioManagerRef = useRef<AudioManager | null>(null);
+  const asioAudioManagerRef = useRef<ASIOAudioManager | null>(null);
 
   const sttEndpoints: STTEndpoint[] = [
     {
@@ -212,9 +214,13 @@ const App: React.FC = () => {
         // Initialize WebSocket Manager
         webSocketManagerRef.current = new WebSocketManager(sttEndpoints);
         
-        // Initialize Audio Manager
+        // Initialize Audio Manager (for browser microphones)
         audioManagerRef.current = new AudioManager(webSocketManagerRef.current);
         await audioManagerRef.current.initialize();
+        
+        // Initialize ASIO Audio Manager (for ASIO channels)
+        asioAudioManagerRef.current = new ASIOAudioManager(webSocketManagerRef.current);
+        await asioAudioManagerRef.current.initialize();
         
         console.log('✅ New architecture managers initialized');
       } catch (error) {
@@ -264,6 +270,9 @@ const App: React.FC = () => {
       window.removeEventListener('stt-message', handleSTTMessage as EventListener);
       if (audioManagerRef.current) {
         audioManagerRef.current.destroy();
+      }
+      if (asioAudioManagerRef.current) {
+        asioAudioManagerRef.current.destroy();
       }
       if (webSocketManagerRef.current) {
         webSocketManagerRef.current.closeAllConnections();
@@ -390,6 +399,9 @@ const App: React.FC = () => {
         if (audioManagerRef.current) {
           audioManagerRef.current.stopRecording(micId);
         }
+        if (asioAudioManagerRef.current) {
+          asioAudioManagerRef.current.stopRecording(micId);
+        }
         
         setMicTranscripts(prev => {
           const newTranscripts = new Map(prev);
@@ -430,6 +442,9 @@ const App: React.FC = () => {
         if (audioManagerRef.current) {
           audioManagerRef.current.stopRecording(micId);
         }
+        if (asioAudioManagerRef.current) {
+          asioAudioManagerRef.current.stopRecording(micId);
+        }
         setMicStatuses(prev => new Map(prev).set(micId, { 
           isConnected: false, 
           status: 'Disconnected' 
@@ -452,7 +467,22 @@ const App: React.FC = () => {
     } else {
       // Start recording using new architecture
       try {
-        if (audioManagerRef.current) {
+        // Determine if this is an ASIO channel or browser microphone
+        const isASIOChannel = !isNaN(parseInt(mic.deviceId));
+        
+        if (isASIOChannel && asioAudioManagerRef.current) {
+          // Use ASIO audio manager for ASIO channels
+          const success = await asioAudioManagerRef.current.startRecording(mic);
+          if (success) {
+            setMicStatuses(prev => new Map(prev).set(micId, { 
+              isConnected: true, 
+              status: 'Recording...' 
+            }));
+          } else {
+            alert('Failed to start ASIO recording. Please check ASIO Bridge connection.');
+          }
+        } else if (audioManagerRef.current) {
+          // Use browser audio manager for browser microphones
           const success = await audioManagerRef.current.startRecording(mic);
           if (success) {
             setMicStatuses(prev => new Map(prev).set(micId, { 
@@ -478,6 +508,9 @@ const App: React.FC = () => {
     // First, stop the actual audio recording
     if (audioManagerRef.current) {
       audioManagerRef.current.stopRecording(micId);
+    }
+    if (asioAudioManagerRef.current) {
+      asioAudioManagerRef.current.stopRecording(micId);
     }
     
     // Then handle transcript saving
