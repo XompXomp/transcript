@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [micLastMessageTime, setMicLastMessageTime] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [timeoutCheckCounter, setTimeoutCheckCounter] = useState(0); // Force re-renders for timeout checks
   
   // New architecture managers
   const webSocketManagerRef = useRef<WebSocketManager | null>(null);
@@ -263,9 +264,15 @@ const App: React.FC = () => {
     
     window.addEventListener('stt-message', handleSTTMessage as EventListener);
     
+    // Set up timer to check timeouts every second
+    const timeoutInterval = setInterval(() => {
+      setTimeoutCheckCounter(prev => prev + 1);
+    }, 1000);
+
     // Cleanup on unmount
     return () => {
       window.removeEventListener('stt-message', handleSTTMessage as EventListener);
+      clearInterval(timeoutInterval);
       if (audioManagerRef.current) {
         audioManagerRef.current.destroy();
       }
