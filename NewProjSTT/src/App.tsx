@@ -947,6 +947,81 @@ const App: React.FC = () => {
     }
   };
 
+  const recoverAllConnections = async () => {
+    console.log('🔄 Starting recovery for all active mics...');
+    
+    // Get all active mics that are currently recording
+    const activeRecordingMics = mics.filter(mic => mic.isActive && isRecording(mic.micId));
+    
+    if (activeRecordingMics.length === 0) {
+      console.log('No active recording mics to recover');
+      return;
+    }
+    
+    console.log(`🔄 Recovering ${activeRecordingMics.length} mics sequentially...`);
+    
+    for (let i = 0; i < activeRecordingMics.length; i++) {
+      const mic = activeRecordingMics[i];
+      console.log(`🔄 [${i + 1}/${activeRecordingMics.length}] Recovering mic ${mic.micId}...`);
+      
+      try {
+        // Step 1: Deactivate (disconnect from STT) - this will stop recording automatically
+        console.log(`  📴 Deactivating mic ${mic.micId}...`);
+        await toggleMicActive(mic.micId);
+        
+        // Step 2: Wait 2 seconds
+        console.log(`  ⏳ Waiting 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Step 3: Activate (reconnect to STT) - force activate by setting isActive to true
+        console.log(`  📱 Activating mic ${mic.micId}...`);
+        await updateMic(mic.micId, { isActive: true });
+        
+        // Create connection using new architecture
+        if (webSocketManagerRef.current) {
+          const success = await webSocketManagerRef.current.createConnection(mic);
+          if (success) {
+            setMicStatuses(prev => new Map(prev).set(mic.micId, { 
+              isConnected: true, 
+              status: 'Ready to record' 
+            }));
+          }
+        }
+        
+        // Step 4: Wait 1 second
+        console.log(`  ⏳ Waiting 1 second...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+                 // Step 5: Start recording - force start by calling startRecording directly
+         console.log(`  🎤 Starting recording for mic ${mic.micId}...`);
+         if (audioManagerRef.current) {
+           const success = await audioManagerRef.current.startRecording(mic);
+           if (success) {
+             setMicStatuses(prev => new Map(prev).set(mic.micId, { 
+               isConnected: true, 
+               status: 'Recording...' 
+             }));
+           }
+         }
+        
+        console.log(`  ✅ Mic ${mic.micId} recovered successfully`);
+        
+        // Wait 1 second before next mic (except for the last one)
+        if (i < activeRecordingMics.length - 1) {
+          console.log(`  ⏳ Waiting 1 second before next mic...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+      } catch (error) {
+        console.error(`❌ Failed to recover mic ${mic.micId}:`, error);
+      }
+    }
+    
+    console.log('🎉 Recovery process completed for all mics');
+    setSuccessMessage('Connection recovery completed for all mics!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   return (
     <div style={{
       maxWidth: 1400,
@@ -1083,6 +1158,21 @@ const App: React.FC = () => {
         >
             ⏹️ Stop All Recording
         </button>
+
+          <button
+            onClick={recoverAllConnections}
+            style={{
+              background: '#9c27b0',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Recover All Connections
+          </button>
       </div>
       
       {/* Microphones Table */}
