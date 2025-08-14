@@ -1,0 +1,42 @@
+{
+  "name": "asio-bridge",
+  "version": "1.0.0",
+  "description": "ASIO Audio Bridge for Web Applications",
+  "main": "build/Release/asio-bridge.exe",
+  "scripts": {
+    "build": "build.bat",
+    "build:clean": "rmdir /s /q build && build.bat",
+    "run": "build/Release/asio-bridge.exe",
+    "run:port": "build/Release/asio-bridge.exe --port 8080",
+    "install-deps": "echo Please install dependencies manually as described in README.md"
+  },
+  "keywords": [
+    "asio",
+    "audio",
+    "websocket",
+    "streaming",
+    "c++"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "asio-sdk": "file:./asio-sdk",
+    "websocketpp": "file:./websocketpp",
+    "nlohmann-json": "file:./json"
+  },
+  "devDependencies": {
+    "cmake": "^3.16.0",
+    "visual-studio": "^2019"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "your-repository-url"
+  },
+  "bugs": {
+    "url": "your-repository-url/issues"
+  },
+  "homepage": "your-repository-url#readme"
+}
