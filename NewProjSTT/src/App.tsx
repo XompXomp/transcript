@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [timeoutCheckCounter, setTimeoutCheckCounter] = useState(0); // Force re-renders for timeout checks
+  const [topicSearch, setTopicSearch] = useState<string>(''); // New search state
   
   // New architecture managers
   const webSocketManagerRef = useRef<WebSocketManager | null>(null);
@@ -1215,6 +1216,70 @@ const App: React.FC = () => {
           </button>
       </div>
       
+      {/* Search by Topic Name */}
+      <div style={{
+        background: 'white',
+        borderRadius: 8,
+        border: '1px solid #ddd',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <label style={{
+            fontWeight: 'bold',
+            fontSize: 14,
+            color: '#333',
+            minWidth: '120px'
+          }}>
+            🔍 Search by Topic:
+          </label>
+          <input
+            type="text"
+            value={topicSearch}
+            onChange={(e) => setTopicSearch(e.target.value)}
+            placeholder="Enter topic name to filter microphones..."
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: 4,
+              border: '1px solid #ddd',
+              fontSize: 14
+            }}
+          />
+          {topicSearch && (
+            <button
+              onClick={() => setTopicSearch('')}
+              style={{
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                padding: '8px 12px',
+                fontSize: 14,
+                cursor: 'pointer'
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {topicSearch && (
+          <div style={{
+            marginTop: '8px',
+            fontSize: 12,
+            color: '#666'
+          }}>
+            Showing {mics.filter(mic => 
+              mic.topicName.toLowerCase().includes(topicSearch.toLowerCase())
+            ).length} of {mics.length} microphones
+          </div>
+        )}
+      </div>
+
       {/* Microphones Table */}
        <div style={{
          background: 'white',
@@ -1245,17 +1310,31 @@ const App: React.FC = () => {
         </div>
 
         {/* Table Rows */}
-        {mics.length === 0 ? (
-          <div style={{
-            padding: 40,
-            textAlign: 'center',
-            color: '#666',
-            fontStyle: 'italic'
-          }}>
-            No microphones configured. Click "Add New Microphone" to get started.
-          </div>
-        ) : (
-          mics.map(mic => {
+        {(() => {
+          // Filter microphones based on search term
+          const filteredMics = topicSearch 
+            ? mics.filter(mic => 
+                mic.topicName.toLowerCase().includes(topicSearch.toLowerCase())
+              )
+            : mics;
+          
+          if (filteredMics.length === 0) {
+            return (
+              <div style={{
+                padding: 40,
+                textAlign: 'center',
+                color: '#666',
+                fontStyle: 'italic'
+              }}>
+                {topicSearch 
+                  ? `No microphones found matching "${topicSearch}". Try a different search term.`
+                  : 'No microphones configured. Click "Add New Microphone" to get started.'
+                }
+              </div>
+            );
+          }
+          
+          return filteredMics.map(mic => {
             const status = micStatuses.get(mic.micId);
             const transcript = micTranscripts.get(mic.micId);
             const recording = isRecording(mic.micId);
@@ -1321,148 +1400,148 @@ const App: React.FC = () => {
                   </select>
                 </div>
 
-                                 {/* Table ID */}
-                 <div>
-                   <select
-                     value={mic.tableId}
-                     onChange={(e) => updateMic(mic.micId, { tableId: e.target.value })}
-                     style={{
-                       width: '100%',
-                       padding: '6px',
-                       borderRadius: 4,
-                       border: '1px solid #ddd',
-                       fontSize: 12
-                     }}
-                   >
-                                           <option value="">Select Table...</option>
-                      <option value="01">01</option>
-                      <option value="02">02</option>
-                      <option value="03">03</option>
-                      <option value="04">04</option>
-                      <option value="05">05</option>
-                      <option value="06">06</option>
-                      <option value="07">07</option>
-                      <option value="08">08</option>
-                      <option value="09">09</option>
-                      <option value="10">10</option>
-                      <option value="11">11</option>  
-                      <option value="12">12</option>
-                      <option value="13">13</option>
-                      <option value="14">14</option>
-                      <option value="15">15</option>
-                      <option value="16">16</option>
-                      <option value="17">17</option>
-                      <option value="18">18</option>
-                      <option value="19">19</option>
-                      <option value="20">20</option>
-                      <option value="21">21</option>
-                      <option value="22">22</option>
-                      <option value="23">23</option>
-                      <option value="24">24</option>
-                      <option value="25">25</option>
-                      <option value="26">26</option>
-                      <option value="27">27</option>
-                      <option value="28">28</option>
-                      <option value="29">29</option>
-                      <option value="30">30</option>
-                   </select>
-                 </div>
+                {/* Table ID */}
+                <div>
+                  <select
+                    value={mic.tableId}
+                    onChange={(e) => updateMic(mic.micId, { tableId: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      borderRadius: 4,
+                      border: '1px solid #ddd',
+                      fontSize: 12
+                    }}
+                  >
+                    <option value="">Select Table...</option>
+                    <option value="01">01</option>
+                    <option value="02">02</option>
+                    <option value="03">03</option>
+                    <option value="04">04</option>
+                    <option value="05">05</option>
+                    <option value="06">06</option>
+                    <option value="07">07</option>
+                    <option value="08">08</option>
+                    <option value="09">09</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="22">22</option>
+                    <option value="23">23</option>
+                    <option value="24">24</option>
+                    <option value="25">25</option>
+                    <option value="26">26</option>
+                    <option value="27">27</option>
+                    <option value="28">28</option>
+                    <option value="29">29</option>
+                    <option value="30">30</option>
+                  </select>
+                </div>
 
-                                 {/* Topic ID */}
-                 <div>
-                   <select
-                     value={mic.topicId}
-                     onChange={(e) => updateMic(mic.micId, { topicId: e.target.value })}
-                     style={{
-                       width: '100%',
-                       padding: '6px',
-                       borderRadius: 4,
-                       border: '1px solid #ddd',
-                       fontSize: 12
-                     }}
-                   >
-                                           <option value="">Select Topic ID...</option>
-                      <option value="01">01</option>
-                      <option value="02">02</option>
-                      <option value="03">03</option>
-                      <option value="04">04</option>
-                      <option value="05">05</option>
-                      <option value="06">06</option>
-                      <option value="07">07</option>
-                      <option value="08">08</option>
-                      <option value="09">09</option>
-                      <option value="10">10</option>
-                      <option value="11">11</option>
-                      <option value="12">12</option>
-                      <option value="13">13</option>
-                      <option value="14">14</option>
-                      <option value="15">15</option>
-                      <option value="16">16</option>
-                      <option value="17">17</option>
-                      <option value="18">18</option>
-                      <option value="19">19</option>
-                      <option value="20">20</option>
-                      <option value="21">21</option>
-                      <option value="22">22</option>
-                      <option value="23">23</option>
-                      <option value="24">24</option>
-                      <option value="25">25</option>
-                      <option value="26">26</option>
-                      <option value="27">27</option>
-                      <option value="28">28</option>
-                      <option value="29">29</option>
-                      <option value="30">30</option>
-                   </select>
-                 </div>
+                {/* Topic ID */}
+                <div>
+                  <select
+                    value={mic.topicId}
+                    onChange={(e) => updateMic(mic.micId, { topicId: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      borderRadius: 4,
+                      border: '1px solid #ddd',
+                      fontSize: 12
+                    }}
+                  >
+                    <option value="">Select Topic ID...</option>
+                    <option value="01">01</option>
+                    <option value="02">02</option>
+                    <option value="03">03</option>
+                    <option value="04">04</option>
+                    <option value="05">05</option>
+                    <option value="06">06</option>
+                    <option value="07">07</option>
+                    <option value="08">08</option>
+                    <option value="09">09</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="22">22</option>
+                    <option value="23">23</option>
+                    <option value="24">24</option>
+                    <option value="25">25</option>
+                    <option value="26">26</option>
+                    <option value="27">27</option>
+                    <option value="28">28</option>
+                    <option value="29">29</option>
+                    <option value="30">30</option>
+                  </select>
+                </div>
 
-                                 {/* Topic Name */}
-                 <div>
-                   <select
-                     value={mic.topicName}
-                     onChange={(e) => updateMic(mic.micId, { topicName: e.target.value })}
-                     style={{
-                       width: '100%',
-                       padding: '6px',
-                       borderRadius: 4,
-                       border: '1px solid #ddd',
-                       fontSize: 12
-                     }}
-                   >
-                     <option value="">Select Topic Name...</option>
-                     <option value="Urban Intelligence ">Urban Intelligence</option>
-                     <option value="New Energy">New Energy</option>
-                     <option value="Mobility">Mobility</option>
-                     <option value="Education and talent">Education and talent</option>
-                     <option value="Mission driven ecosystems">Mission driven ecosystems</option>
-                     <option value="Sustainability">Sustainability</option>
-                     <option value="Health and Wellbeing">Health and Wellbeing</option>
-                     <option value="Digital Transformation and Urban Futures">Digital Transformation and Urban Futures</option>
-                     <option value="City Leadership and Economic Development">City Leadership and Economic Development</option>
-                     <option value="Quality of Life">Quality of Life</option>
-                     <option value="Environmental Solutions and Urban Regeneration">Environmental Solutions and Urban Regeneration</option>
-                     <option value="Air Pollution">Air Pollution</option>
-                     <option value="Water Pollution">Water Pollution</option>
-                     <option value="Economy">Economy</option>
-                     <option value="Education">Education</option>
-                     <option value="Health">Health</option>
-                     <option value="Housing">Housing</option>
-                     <option value="Transport">Transport</option>
-                     <option value="Waste">Waste</option>
-                     <option value="Water">Water</option>
-                     <option value="Air">Air</option>
-                     <option value="Climate">Climate</option>
-                     <option value="Energy">Energy</option>
-                     <option value="Environment">Environment</option>
-                     <option value="Health">Health</option>
-                     <option value="Wellbeing">Wellbeing</option>
-                     <option value="Urban Design">Urban Design</option>
-                     <option value="Urban Planning">Urban Planning</option>
-                     <option value="Urban Management">Urban Management</option>
-                     <option value="Urban Policy">Urban Policy</option>
-                     <option value="Urban Research">Urban Research</option>
-                     <option value="Urban Strategy">Urban Strategy</option>
-                   </select>
-                 </div>
+                {/* Topic Name */}
+                <div>
+                  <select
+                    value={mic.topicName}
+                    onChange={(e) => updateMic(mic.micId, { topicName: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      borderRadius: 4,
+                      border: '1px solid #ddd',
+                      fontSize: 12
+                    }}
+                  >
+                    <option value="">Select Topic Name...</option>
+                    <option value="Urban Intelligence ">Urban Intelligence</option>
+                    <option value="New Energy">New Energy</option>
+                    <option value="Mobility">Mobility</option>
+                    <option value="Education and talent">Education and talent</option>
+                    <option value="Mission driven ecosystems">Mission driven ecosystems</option>
+                    <option value="Sustainability">Sustainability</option>
+                    <option value="Health and Wellbeing">Health and Wellbeing</option>
+                    <option value="Digital Transformation and Urban Futures">Digital Transformation and Urban Futures</option>
+                    <option value="City Leadership and Economic Development">City Leadership and Economic Development</option>
+                    <option value="Quality of Life">Quality of Life</option>
+                    <option value="Environmental Solutions and Urban Regeneration">Environmental Solutions and Urban Regeneration</option>
+                    <option value="Air Pollution">Air Pollution</option>
+                    <option value="Water Pollution">Water Pollution</option>
+                    <option value="Economy">Economy</option>
+                    <option value="Education">Education</option>
+                    <option value="Health">Health</option>
+                    <option value="Housing">Housing</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Waste">Waste</option>
+                    <option value="Water">Water</option>
+                    <option value="Air">Air</option>
+                    <option value="Climate">Climate</option>
+                    <option value="Energy">Energy</option>
+                    <option value="Environment">Environment</option>
+                    <option value="Health">Health</option>
+                    <option value="Wellbeing">Wellbeing</option>
+                    <option value="Urban Design">Urban Design</option>
+                    <option value="Urban Planning">Urban Planning</option>
+                    <option value="Urban Management">Urban Management</option>
+                    <option value="Urban Policy">Urban Policy</option>
+                    <option value="Urban Research">Urban Research</option>
+                    <option value="Urban Strategy">Urban Strategy</option>
+                  </select>
+                </div>
 
                 {/* STT Endpoint */}
                 <div>
@@ -1485,38 +1564,38 @@ const App: React.FC = () => {
                   </select>
                 </div>
 
-                                 {/* Status */}
-                 <div style={{ textAlign: 'center' }}>
-                   <div style={{
-                     padding: '4px 8px',
-                     borderRadius: 4,
-                     fontSize: 11,
-                     fontWeight: 'bold',
-                     background: status?.isConnected ? '#e8f5e8' : '#ffe8e8',
-                     color: status?.isConnected ? '#2e7d32' : '#c62828',
-                     border: `1px solid ${status?.isConnected ? '#4caf50' : '#f44336'}`
-                   }}>
-                     {status?.status || 'Unknown'}
-                   </div>
-                   
-                   {/* Transcript Timeout Indicator */}
-                   {recording && (
-                     <div style={{
-                       marginTop: '4px',
-                       padding: '2px 6px',
-                       borderRadius: 3,
-                       fontSize: 10,
-                       fontWeight: 'bold',
-                       background: isTranscriptTimedOut(mic.micId) ? '#ffebee' : '#e8f5e8',
-                       color: isTranscriptTimedOut(mic.micId) ? '#c62828' : '#2e7d32',
-                       border: `1px solid ${isTranscriptTimedOut(mic.micId) ? '#f44336' : '#4caf50'}`,
-                       animation: isTranscriptTimedOut(mic.micId) ? 'pulse 1s infinite' : 'none'
-                     }}
-                     title={isTranscriptTimedOut(mic.micId) ? "No STT messages in 3+ seconds" : "Receiving STT messages"}>
-                       {isTranscriptTimedOut(mic.micId) ? '⚠️ TIMEOUT' : '✅ ACTIVE'}
-                     </div>
-                   )}
-                 </div>
+                {/* Status */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    background: status?.isConnected ? '#e8f5e8' : '#ffe8e8',
+                    color: status?.isConnected ? '#2e7d32' : '#c62828',
+                    border: `1px solid ${status?.isConnected ? '#4caf50' : '#f44336'}`
+                  }}>
+                    {status?.status || 'Unknown'}
+                  </div>
+                  
+                  {/* Transcript Timeout Indicator */}
+                  {recording && (
+                    <div style={{
+                      marginTop: '4px',
+                      padding: '2px 6px',
+                      borderRadius: 3,
+                      fontSize: 10,
+                      fontWeight: 'bold',
+                      background: isTranscriptTimedOut(mic.micId) ? '#ffebee' : '#e8f5e8',
+                      color: isTranscriptTimedOut(mic.micId) ? '#c62828' : '#2e7d32',
+                      border: `1px solid ${isTranscriptTimedOut(mic.micId) ? '#f44336' : '#4caf50'}`,
+                      animation: isTranscriptTimedOut(mic.micId) ? 'pulse 1s infinite' : 'none'
+                    }}
+                    title={isTranscriptTimedOut(mic.micId) ? "No STT messages in 3+ seconds" : "Receiving STT messages"}>
+                      {isTranscriptTimedOut(mic.micId) ? '⚠️ TIMEOUT' : '✅ ACTIVE'}
+                    </div>
+                  )}
+                </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
@@ -1571,35 +1650,35 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                                 {/* Transcript */}
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div 
-              ref={(el) => {
-                if (el && transcript) {
-                  el.scrollTop = el.scrollHeight;
-                }
-              }}
-              style={{
-                     height: '60px',
-                     overflowY: 'auto',
-                     padding: '4px',
-                     background: '#f8f9fa',
-                     border: '1px solid #e9ecef',
-                     borderRadius: 4,
-                     fontSize: 11,
-                     fontFamily: 'monospace'
-                   }}>
-                     {transcript ? (
-                       <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                         {transcript}
-                       </div>
-                     ) : (
-                       <div style={{ color: '#999', fontStyle: 'italic' }}>
-                         No transcript...
-            </div>
-          )}
-        </div>
-      
+                {/* Transcript */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div 
+                    ref={(el) => {
+                      if (el && transcript) {
+                        el.scrollTop = el.scrollHeight;
+                      }
+                    }}
+                    style={{
+                      height: '60px',
+                      overflowY: 'auto',
+                      padding: '4px',
+                      background: '#f8f9fa',
+                      border: '1px solid #e9ecef',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontFamily: 'monospace'
+                    }}>
+                    {transcript ? (
+                      <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+                        {transcript}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#999', fontStyle: 'italic' }}>
+                        No transcript...
+                      </div>
+                    )}
+                  </div>
+                  
                   {transcript && (
                     <button
                       onClick={() => downloadTranscript(mic.micId)}
@@ -1619,8 +1698,8 @@ const App: React.FC = () => {
                 </div>
               </div>
             );
-          })
-        )}
+          });
+        })()}
       </div>
     </div>
   );

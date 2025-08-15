@@ -1,3 +1,5 @@
+//PRETTY SURE THIS FILE CAN BE DELETED SINCE NOT USING OPUS, USES THE OLD 30 PROXY METHOD AS WELL
+
 const fs = require('fs');
 const path = require('path');
 
