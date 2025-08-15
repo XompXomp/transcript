@@ -23,66 +23,6 @@ const App: React.FC = () => {
 
   const sttEndpoints: STTEndpoint[] = [
     {
-      id: 'endpoint1',
-      name: 'STT Server 1',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint2',
-      name: 'STT Server 2',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint3',
-      name: 'STT Server 3',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint4',
-      name: 'STT Server 4',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint5',
-      name: 'STT Server 5',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint6',
-      name: 'STT Server 6',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint7',
-      name: 'STT Server 7',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint8',
-      name: 'STT Server 8',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint9',
-      name: 'STT Server 9',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint10',
-      name: 'STT Server 10',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
       id: 'endpoint11',
       name: 'STT Server 11',
       url: '',
@@ -103,102 +43,6 @@ const App: React.FC = () => {
     {
       id: 'endpoint14',
       name: 'STT Server 14',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint15',
-      name: 'STT Server 15',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint16',
-      name: 'STT Server 16',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint17',
-      name: 'STT Server 17',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint18',
-      name: 'STT Server 18',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint19',
-      name: 'STT Server 19',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint20',
-      name: 'STT Server 20',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint21',
-      name: 'STT Server 21',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint22',
-      name: 'STT Server 22',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint23',
-      name: 'STT Server 23',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint24',
-      name: 'STT Server 24',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint25',
-      name: 'STT Server 25',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint26',
-      name: 'STT Server 26',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint27',
-      name: 'STT Server 27',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint28',
-      name: 'STT Server 28',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint29',
-      name: 'STT Server 29',
-      url: '',
-      apiKey: 'public_token'
-    },
-    {
-      id: 'endpoint30',
-      name: 'STT Server 30',
       url: '',
       apiKey: 'public_token'
     }
@@ -349,7 +193,7 @@ const App: React.FC = () => {
       tableId: '',
       topicId: '',
       topicName: '',
-      sttEndpoint: '',
+      sttEndpoint: 'endpoint11', // Set default to endpoint11
       isActive: false
     };
 
@@ -1546,7 +1390,7 @@ const App: React.FC = () => {
                 {/* STT Endpoint */}
                 <div>
                   <select
-                    value={mic.sttEndpoint}
+                    value={mic.sttEndpoint || 'endpoint11'}
                     onChange={(e) => updateMic(mic.micId, { sttEndpoint: e.target.value })}
                     style={{
                       width: '100%',
@@ -1556,6 +1400,7 @@ const App: React.FC = () => {
                       fontSize: 12
                     }}
                   >
+                    <option value="">Select STT Endpoint...</option>
                     {sttEndpoints.map(endpoint => (
                       <option key={endpoint.id} value={endpoint.id}>
                         {endpoint.name}
