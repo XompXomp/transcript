@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 // @ts-ignore
 import msgpack from 'msgpack-lite';
-import { MicConfig, Transcript, STTEndpoint, AudioDevice } from './types';
+import { MicConfig, Transcript, STTEndpoint } from './types';
 import { databaseService } from './databaseService';
 import { WebSocketManager } from './WebSocketManager';
-import { AudioManager } from './AudioManager';
+import { BackendAudioManager } from './BackendAudioManager';
+import { BackendAudioDevice } from './BackendAudioService';
 
 const App: React.FC = () => {
   const [mics, setMics] = useState<MicConfig[]>([]);
-  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [audioDevices, setAudioDevices] = useState<BackendAudioDevice[]>([]);
   const [micStatuses, setMicStatuses] = useState<Map<string, { isConnected: boolean; status: string }>>(new Map());
   const [micTranscripts, setMicTranscripts] = useState<Map<string, string>>(new Map());
   const [micLastMessageTime, setMicLastMessageTime] = useState<Map<string, number>>(new Map());
@@ -16,10 +17,11 @@ const App: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [timeoutCheckCounter, setTimeoutCheckCounter] = useState(0); // Force re-renders for timeout checks
   const [topicSearch, setTopicSearch] = useState<string>(''); // New search state
+  const [backendStatus, setBackendStatus] = useState<{ healthy: boolean; connected: boolean }>({ healthy: false, connected: false });
   
   // New architecture managers
   const webSocketManagerRef = useRef<WebSocketManager | null>(null);
-  const audioManagerRef = useRef<AudioManager | null>(null);
+  const audioManagerRef = useRef<BackendAudioManager | null>(null);
 
   const sttEndpoints: STTEndpoint[] = [
     {
@@ -56,16 +58,25 @@ const App: React.FC = () => {
     // Initialize new architecture managers
     const initializeManagers = async () => {
       try {
+        console.log('🔄 Starting manager initialization...');
+        
         // Initialize WebSocket Manager
         webSocketManagerRef.current = new WebSocketManager(sttEndpoints);
+        console.log('✅ WebSocket Manager created');
         
         // Initialize Audio Manager
-        audioManagerRef.current = new AudioManager(webSocketManagerRef.current);
-        await audioManagerRef.current.initialize();
+        audioManagerRef.current = new BackendAudioManager(webSocketManagerRef.current);
+        console.log('✅ BackendAudioManager created, initializing...');
         
-        console.log('✅ New architecture managers initialized');
+        const initResult = await audioManagerRef.current.initialize();
+        if (!initResult) {
+          console.error('❌ BackendAudioManager initialization failed');
+          return;
+        }
+        
+        console.log('✅ New architecture managers initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize managers:', error);
+        console.error('❌ Failed to initialize managers:', error);
       }
     };
     
@@ -150,36 +161,31 @@ const App: React.FC = () => {
 
   const loadAudioDevices = async () => {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputs = devices
-        .filter(device => device.kind === 'audioinput')
-        .map(device => ({
-          deviceId: device.deviceId,
-          label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
-          groupId: device.groupId
-        }));
-      setAudioDevices(audioInputs);
+      if (audioManagerRef.current) {
+        const devices = await audioManagerRef.current.loadDevices();
+        setAudioDevices(devices);
+        
+        // Update backend status
+        const status = await audioManagerRef.current.getBackendStatus();
+        setBackendStatus({
+          healthy: status.healthy,
+          connected: audioManagerRef.current.isBackendConnected()
+        });
+      }
     } catch (error) {
       console.error('Error loading audio devices:', error);
+      setBackendStatus({ healthy: false, connected: false });
     }
   };
 
-  const requestMicrophonePermission = async () => {
+  const refreshWDMDevices = async () => {
     try {
-      // Request microphone access to trigger permission prompt
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Stop the stream immediately (we just needed the permission)
-      stream.getTracks().forEach(track => track.stop());
-      
-      // Reload devices with proper labels now that we have permission
       await loadAudioDevices();
-      
-      setSuccessMessage('Microphone access granted! Devices loaded.');
+      setSuccessMessage('WDM devices refreshed!');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-      console.error('Error requesting microphone permission:', error);
-      alert('Failed to get microphone permission. Please allow microphone access in your browser settings.');
+      console.error('Error refreshing WDM devices:', error);
+      alert('Failed to refresh WDM devices. Please check if the backend is running.');
     }
   };
 
@@ -977,6 +983,49 @@ const App: React.FC = () => {
          </div>
        )}
        
+               {/* Backend Status Indicator */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: 8,
+                 border: '1px solid #ddd',
+                 padding: '12px 16px',
+                 marginBottom: '16px',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '12px'
+               }}>
+                 <div style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '8px'
+                 }}>
+                   <span style={{
+                     width: '12px',
+                     height: '12px',
+                     borderRadius: '50%',
+                     background: backendStatus.healthy ? '#4caf50' : '#f44336'
+                   }}></span>
+                   <span style={{ fontWeight: 'bold', fontSize: 14 }}>
+                     Backend: {backendStatus.healthy ? 'Healthy' : 'Unhealthy'}
+                   </span>
+                 </div>
+                 <div style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '8px'
+                 }}>
+                   <span style={{
+                     width: '12px',
+                     height: '12px',
+                     borderRadius: '50%',
+                     background: backendStatus.connected ? '#4caf50' : '#f44336'
+                   }}></span>
+                   <span style={{ fontSize: 14 }}>
+                     WebSocket: {backendStatus.connected ? 'Connected' : 'Disconnected'}
+                   </span>
+                 </div>
+               </div>
+
                {/* Button Container */}
         <div style={{ 
           marginBottom: 20, 
@@ -1000,7 +1049,7 @@ const App: React.FC = () => {
          </button>
          
          <button
-           onClick={requestMicrophonePermission}
+           onClick={refreshWDMDevices}
            style={{
              background: '#2196f3',
              color: 'white',
@@ -1011,7 +1060,7 @@ const App: React.FC = () => {
              cursor: 'pointer'
            }}
          >
-           🎤 Request Microphone Access
+           🔄 Refresh WDM Devices
          </button>
         
         <button
@@ -1201,10 +1250,10 @@ const App: React.FC = () => {
                   <select
                     value={mic.deviceId}
                     onChange={(e) => {
-                      const device = audioDevices.find(d => d.deviceId === e.target.value);
+                      const device = audioDevices.find(d => d.id.toString() === e.target.value);
                       updateMic(mic.micId, { 
                         deviceId: e.target.value,
-                        deviceName: device?.label || ''
+                        deviceName: device?.name || ''
                       });
                     }}
                     style={{
@@ -1217,8 +1266,8 @@ const App: React.FC = () => {
                   >
                     <option value="">Select device...</option>
                     {audioDevices.map(device => (
-                      <option key={device.deviceId} value={device.deviceId}>
-                        {device.label}
+                      <option key={device.id} value={device.id.toString()}>
+                        {device.name}
                       </option>
                     ))}
                   </select>
