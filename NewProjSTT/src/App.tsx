@@ -24,25 +24,25 @@ const App: React.FC = () => {
   const sttEndpoints: STTEndpoint[] = [
     {
       id: 'endpoint11',
-      name: 'STT Server 11',
+      name: 'Unmute 1',
       url: '',
       apiKey: 'public_token'
     },
     {
       id: 'endpoint12',
-      name: 'STT Server 12',
+      name: 'Unmute 2',
       url: '',
       apiKey: 'public_token'
     },
     {
       id: 'endpoint13',
-      name: 'STT Server 13',
+      name: 'Unmute 3',
       url: '',
       apiKey: 'public_token'
     },
     {
       id: 'endpoint14',
-      name: 'STT Server 14',
+      name: 'Unmute 4',
       url: '',
       apiKey: 'public_token'
     }
