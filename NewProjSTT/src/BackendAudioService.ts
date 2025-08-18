@@ -16,6 +16,8 @@ export interface AudioStream {
 export class BackendAudioService {
   private baseUrl = 'http://localhost:3001';
   private wsUrl = 'ws://localhost:3002';
+  //private baseUrl = 'http://172.22.225.149:3001';
+  //private wsUrl = 'ws://172.22.225.149:3002';
   private ws: WebSocket | null = null;
   private audioCallbacks: Map<string, (audioData: Int16Array) => void> = new Map();
   private isConnected = false;

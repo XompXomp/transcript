@@ -113,15 +113,17 @@ app.get('/api/test-mic-access', (req, res) => {
 app.get('/api/devices', (req, res) => {
   try {
     const devices = portAudio.getDevices();
-    // Filter for input devices - handle cases where maxInputs is undefined
+    // Filter for input devices - include Dante channels and handle cases where maxInputs is undefined
     const inputDevices = devices.filter(device => {
-      // Check if it's an input device by name or maxInputs
+      // Check if it's an input device by name, maxInputs, or Dante channels
       const isInputByName = device.name.toLowerCase().includes('input') || 
                            device.name.toLowerCase().includes('microphone') ||
                            device.name.toLowerCase().includes('mic');
       const isInputByMaxInputs = device.maxInputs && device.maxInputs > 0;
+      const isDanteChannel = device.name.toLowerCase().includes('dvs receive') ||
+                            device.name.toLowerCase().includes('dante');
       
-      return isInputByName || isInputByMaxInputs;
+      return isInputByName || isInputByMaxInputs || isDanteChannel;
     });
     
     console.log(`📋 Found ${inputDevices.length} input devices`);
@@ -408,7 +410,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ HTTP Server running on port ${PORT}`);
   console.log(`✅ WebSocket Server running on port 3002`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
