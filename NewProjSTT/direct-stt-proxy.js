@@ -13,12 +13,21 @@ wss.on('connection', (ws) => {
   const clientId = Math.random().toString(36).substr(2, 9);
   console.log(`🔌 [Direct Proxy] Client ${clientId} connected to proxy`);
   
-  // Connect to STT server with proper headers
+  // Connect to futureos STT server 
   const sttWs = new WebSocket('ws://172.22.225.146:11000/api/asr-streaming', {
     headers: {
       'kyutai-api-key': 'public_token'
     }
   });
+
+  // Connect to ankur STT server 
+  //
+  /*
+  const sttWs = new WebSocket('ws://192.168.1.48:11000/api/asr-streaming', {
+    headers: {
+      'kyutai-api-key': 'public_token'
+    }
+  });*/
   
   sttWs.on('open', () => {
     console.log(`✅ [Direct Proxy] Client ${clientId} connected to STT Server`);

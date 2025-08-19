@@ -154,6 +154,10 @@ export class WebSocketManager {
       if (connection.debugCounter % 100 === 0) {
         console.log(`📤 Mic ${micId} - Sending audio: Max=${maxValue.toFixed(4)}, Avg=${avgValue.toFixed(4)}, Samples=${pcmArray.length}`);
         
+        // Enhanced Dante debugging for STT transmission
+        const nonZeroCount = pcmArray.filter(x => Math.abs(x) > 0.001).length;
+        console.log(`🎵 STT Audio Analysis: NonZero=${nonZeroCount}/${pcmArray.length}, Min=${Math.min(...pcmArray).toFixed(4)}, Max=${Math.max(...pcmArray).toFixed(4)}`);
+        
         // Check if we're sending silence
         if (maxValue < 0.001) {
           console.warn(`⚠️ Mic ${micId} - Very low audio levels being sent! Possible silence.`);

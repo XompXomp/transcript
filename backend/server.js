@@ -23,6 +23,94 @@ console.log('🔌 WebSocket: ws://localhost:3002');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
 // API Routes
+app.get('/api/test-dante-devices', (req, res) => {
+  try {
+    const devices = portAudio.getDevices();
+    const danteDevices = devices.filter(device => {
+      return device.name.toLowerCase().includes('dante') || 
+             device.name.toLowerCase().includes('dvs') ||
+             device.name.toLowerCase().includes('dvs receive');
+    });
+
+    console.log('🎵 Testing Dante device access...');
+    console.log('Found Dante devices:', danteDevices.map(d => ({
+      id: d.id,
+      name: d.name,
+      maxInputs: d.maxInputs,
+      maxOutputs: d.maxOutputs,
+      defaultSampleRate: d.defaultSampleRate
+    })));
+
+    if (danteDevices.length === 0) {
+      return res.json({
+        success: false,
+        error: 'No Dante devices found',
+        devices: []
+      });
+    }
+
+    // Test the first Dante device
+    const testDevice = danteDevices[0];
+    console.log(`🧪 Testing Dante device: ${testDevice.name} (ID: ${testDevice.id})`);
+
+    try {
+      const testStream = portAudio.AudioIO({
+        inChannels: 1,
+        outChannels: 0,
+        inOptions: {
+          channelCount: 1,
+          sampleFormat: portAudio.SampleFormatInt16,
+          sampleRate: testDevice.defaultSampleRate || 48000, // Dante typically uses 48kHz
+          deviceId: testDevice.id
+        }
+      });
+
+      // If we get here, we can create the stream
+      testStream.quit(); // Clean up immediately
+      
+      res.json({
+        success: true,
+        message: 'Dante device access test successful',
+        testDevice: {
+          id: testDevice.id,
+          name: testDevice.name,
+          defaultSampleRate: testDevice.defaultSampleRate,
+          maxInputs: testDevice.maxInputs,
+          maxOutputs: testDevice.maxOutputs
+        },
+        allDanteDevices: danteDevices.map(d => ({
+          id: d.id,
+          name: d.name,
+          maxInputs: d.maxInputs,
+          maxOutputs: d.maxOutputs,
+          defaultSampleRate: d.defaultSampleRate
+        }))
+      });
+
+    } catch (streamError) {
+      res.json({
+        success: false,
+        error: 'Cannot create Dante audio stream',
+        streamError: streamError.message,
+        testDevice: {
+          id: testDevice.id,
+          name: testDevice.name,
+          defaultSampleRate: testDevice.defaultSampleRate,
+          maxInputs: testDevice.maxInputs,
+          maxOutputs: testDevice.maxOutputs
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error testing Dante devices:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 app.get('/api/test-mic-access', (req, res) => {
   try {
     const devices = portAudio.getDevices();
@@ -128,15 +216,22 @@ app.get('/api/devices', (req, res) => {
     
     console.log(`📋 Found ${inputDevices.length} input devices`);
     
+    // Enhanced device info for debugging
+    const enhancedDevices = inputDevices.map(device => ({
+      id: device.id,
+      name: device.name,
+      maxInputs: device.maxInputs || 1, // Default to 1 if undefined
+      defaultSampleRate: device.defaultSampleRate || 16000, // Default sample rate
+      hostAPIName: device.hostAPIName || 'Unknown',
+      isDante: device.name.toLowerCase().includes('dante') || device.name.toLowerCase().includes('dvs'),
+      maxOutputs: device.maxOutputs || 0,
+      defaultLowInputLatency: device.defaultLowInputLatency || 0,
+      defaultHighInputLatency: device.defaultHighInputLatency || 0
+    }));
+    
     res.json({
       success: true,
-      devices: inputDevices.map(device => ({
-        id: device.id,
-        name: device.name,
-        maxInputs: device.maxInputs || 1, // Default to 1 if undefined
-        defaultSampleRate: device.defaultSampleRate || 16000, // Default sample rate
-        hostAPIName: device.hostAPIName || 'Unknown'
-      }))
+      devices: enhancedDevices
     });
   } catch (error) {
     console.error('❌ Error getting devices:', error);
@@ -341,6 +436,14 @@ wss.on('connection', (ws) => {
             
             if (streamData.debugCounter % 100 === 0) {
               console.log(`🎤 Stream ${streamId} - Audio levels: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${audioData.length}`);
+              
+              // Enhanced Dante debugging
+              const device = devices.find(d => d.id === parseInt(streamData.deviceId));
+              if (device && device.name.toLowerCase().includes('dante')) {
+                console.log(`🎵 Dante Device Info: ${device.name}`);
+                console.log(`🎵 Sample Rate: ${device.defaultSampleRate}, Max Inputs: ${device.maxInputs}`);
+                console.log(`🎵 Audio Data Stats: Min=${Math.min(...audioData)}, Max=${maxValue}, NonZero=${audioData.filter(x => x !== 0).length}/${audioData.length}`);
+              }
               
               // If we're getting silence, log a warning
               if (maxValue === 0) {
