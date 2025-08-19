@@ -219,13 +219,7 @@ export class BackendAudioManager {
         const avgValue = audioData.reduce((sum, val) => sum + val, 0) / audioData.length;
         console.log(`📤 Mic ${micId} - WDM Audio: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${audioData.length}`);
         
-        // Enhanced Dante debugging
-        const device = this.availableDevices.find(d => d.id === audioStream.deviceId);
-        if (device && device.name.toLowerCase().includes('dante')) {
-          console.log(`🎵 Dante Frontend Debug - Device: ${device.name}`);
-          console.log(`🎵 Audio Data Analysis: Min=${Math.min(...audioData)}, Max=${maxValue}, NonZero=${audioData.filter(x => x !== 0).length}/${audioData.length}`);
-          console.log(`🎵 Sample Rate: ${device.defaultSampleRate}, Max Inputs: ${device.maxInputs}`);
-        }
+
         
         // Check if we're receiving silence
         if (maxValue < 10) {

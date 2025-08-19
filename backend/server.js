@@ -437,14 +437,6 @@ wss.on('connection', (ws) => {
             if (streamData.debugCounter % 100 === 0) {
               console.log(`🎤 Stream ${streamId} - Audio levels: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${audioData.length}`);
               
-              // Enhanced Dante debugging
-              const device = devices.find(d => d.id === parseInt(streamData.deviceId));
-              if (device && device.name.toLowerCase().includes('dante')) {
-                console.log(`🎵 Dante Device Info: ${device.name}`);
-                console.log(`🎵 Sample Rate: ${device.defaultSampleRate}, Max Inputs: ${device.maxInputs}`);
-                console.log(`🎵 Audio Data Stats: Min=${Math.min(...audioData)}, Max=${maxValue}, NonZero=${audioData.filter(x => x !== 0).length}/${audioData.length}`);
-              }
-              
               // If we're getting silence, log a warning
               if (maxValue === 0) {
                 console.warn(`🔇 Stream ${streamId} - Microphone appears to be silent. Check microphone permissions and settings.`);
