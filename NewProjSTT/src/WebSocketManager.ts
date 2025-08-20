@@ -143,11 +143,11 @@ export class WebSocketManager {
       const maxValue = Math.max(...audioData.map(Math.abs));
       const avgValue = audioData.reduce((sum, val) => sum + Math.abs(val), 0) / audioData.length;
       
-      // Log audio levels every 100 sends (about every 8 seconds)
+      // Log audio levels every 10 sends (about every 0.8 seconds)
       if (!connection.debugCounter) connection.debugCounter = 0;
       connection.debugCounter++;
       
-      if (connection.debugCounter % 100 === 0) {
+      if (connection.debugCounter % 10 === 0) {
         console.log(`📤 Mic ${micId} - Sending audio: Max=${maxValue.toFixed(4)}, Avg=${avgValue.toFixed(4)}, Samples=${audioData.length}`);
         
         // Check if we're sending silence

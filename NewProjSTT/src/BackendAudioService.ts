@@ -95,9 +95,26 @@ export class BackendAudioService {
       
       if (callback) {
         try {
-          // Convert base64 to Int16Array (not Uint8Array)
+          // Convert base64 to Int16Array while preserving signed 16-bit values
           const audioDataBytes = Uint8Array.from(atob(audioDataBase64), c => c.charCodeAt(0));
-          const audioData = new Int16Array(audioDataBytes.buffer);
+          
+          // Create Int16Array from the bytes, handling endianness correctly
+          const audioData = new Int16Array(audioDataBytes.length / 2);
+          for (let i = 0; i < audioDataBytes.length; i += 2) {
+            // Combine two bytes into a 16-bit signed integer
+            // Little-endian: least significant byte first
+            const lowByte = audioDataBytes[i];
+            const highByte = audioDataBytes[i + 1];
+            let value = (highByte << 8) | lowByte;
+            
+            // Handle negative numbers (two's complement)
+            if (value > 32767) {
+              value = value - 65536;
+            }
+            
+            audioData[i / 2] = value;
+          }
+          
           callback(audioData);
         } catch (error) {
           console.error('❌ Error processing audio data:', error);
