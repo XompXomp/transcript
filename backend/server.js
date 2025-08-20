@@ -507,14 +507,34 @@ wss.on('connection', (ws) => {
         // Set up audio data handler for this client
         streamData.stream.on('data', (audioData) => {
           if (ws.readyState === WebSocket.OPEN) {
-            let processedAudioData = audioData;
+            // DEBUG: Log raw audio data before any processing
+            const rawMaxValue = Math.max(...audioData);
+            const rawAvgValue = audioData.reduce((sum, val) => sum + Math.abs(val), 0) / audioData.length;
+            console.log(`🔍 RAW audio data: Max=${rawMaxValue}, Avg=${rawAvgValue.toFixed(2)}, Type=${audioData.constructor.name}, Length=${audioData.length}`);
+            
+            // FORCE PortAudio to return Int16Array data
+            let rawAudioData = audioData;
+            if (audioData.constructor.name === 'Buffer') {
+              // Convert Buffer to Int16Array if PortAudio returns wrong type
+              rawAudioData = new Int16Array(audioData.buffer, audioData.byteOffset, audioData.length / 2);
+              console.log(`⚠️ PortAudio returned Buffer instead of Int16Array - converted to Int16Array`);
+            }
+            
+            // Re-log with converted data
+            const convertedMaxValue = Math.max(...rawAudioData);
+            const convertedAvgValue = rawAudioData.reduce((sum, val) => sum + Math.abs(val), 0) / rawAudioData.length;
+            console.log(`🔄 CONVERTED audio data: Max=${convertedMaxValue}, Avg=${convertedAvgValue.toFixed(2)}, Type=${rawAudioData.constructor.name}, Length=${rawAudioData.length}`);
+            
+            let processedAudioData = rawAudioData;
             
             // If this is a virtual device, extract the appropriate channel
             if (streamData.isVirtualDevice && streamData.virtualDeviceId) {
-              const extractedChannel = channelExtractor.processAudioForVirtualDevice(audioData, streamData.virtualDeviceId);
+              const extractedChannel = channelExtractor.processAudioForVirtualDevice(rawAudioData, streamData.virtualDeviceId);
               if (extractedChannel) {
                 processedAudioData = extractedChannel;
-                console.log(`🎵 Extracted ${channelExtractor.getChannelType(streamData.virtualDeviceId)} channel for virtual device ${streamData.virtualDeviceId}, samples: ${extractedChannel.length}`);
+                const extractedMaxValue = Math.max(...extractedChannel);
+                const extractedAvgValue = extractedChannel.reduce((sum, val) => sum + Math.abs(val), 0) / extractedChannel.length;
+                console.log(`🎵 EXTRACTED channel: Max=${extractedMaxValue}, Avg=${extractedAvgValue.toFixed(2)}, Type=${extractedChannel.constructor.name}, Length=${extractedChannel.length}`);
               }
             }
             
@@ -536,11 +556,25 @@ wss.on('connection', (ws) => {
               }
             }
             
-            // Send the processed audio data
+            // Send the processed audio data as raw Int16Array (preserves signed 16-bit values)
+            // processedAudioData is already an Int16Array, so we can use it directly
+            const bytes = new Uint8Array(processedAudioData.length * 2);
+            
+            // Convert each Int16 to two bytes (little-endian)
+            for (let i = 0; i < processedAudioData.length; i++) {
+              const value = processedAudioData[i];
+              const lowByte = value & 0xFF;
+              const highByte = (value >> 8) & 0xFF;
+              bytes[i * 2] = lowByte;
+              bytes[i * 2 + 1] = highByte;
+            }
+            
+            const base64Data = Buffer.from(bytes).toString('base64');
+            
             ws.send(JSON.stringify({
               type: 'audio',
               streamId,
-              data: Buffer.from(processedAudioData.buffer).toString('base64'),
+              data: base64Data,
               timestamp: Date.now()
             }));
           }
