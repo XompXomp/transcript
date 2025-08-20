@@ -4,6 +4,8 @@ export interface BackendAudioDevice {
   maxInputs: number;
   defaultSampleRate: number;
   hostAPIName: string;
+  isVirtual?: boolean;
+  isDante?: boolean;
 }
 
 export interface AudioStream {

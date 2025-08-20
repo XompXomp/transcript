@@ -2,7 +2,6 @@ const express = require('express');
 const WebSocket = require('ws');
 const cors = require('cors');
 const portAudio = require('naudiodon');
-const ChannelExtractor = require('./channelExtractor');
 
 const app = express();
 const PORT = 3001;
@@ -17,9 +16,6 @@ const wss = new WebSocket.Server({ port: 3002 });
 
 // Track stream states manually
 const streamStates = new Map();
-
-// Initialize channel extractor for DVS Receive devices
-const channelExtractor = new ChannelExtractor();
 
 console.log('🚀 WDM Audio Stream Server starting...');
 console.log('📡 HTTP API: http://localhost:3001');
@@ -205,45 +201,37 @@ app.get('/api/test-mic-access', (req, res) => {
 app.get('/api/devices', (req, res) => {
   try {
     const devices = portAudio.getDevices();
-    
-    // ONLY get working DVS Receive Dante Virtual Soundcard devices - filter out everything else
-    const dvsDevices = devices.filter(device => {
-      return device.name.toLowerCase().includes('dvs receive') && 
-             device.name.toLowerCase().includes('dante virtual soundcard');
-    });
-    
-    console.log(`📋 Found ${dvsDevices.length} DVS Receive physical devices`);
-    console.log('🔍 Physical devices found:');
-    dvsDevices.forEach(device => {
-      console.log(`  - ID: ${device.id}, Name: "${device.name}"`);
-    });
-    
-    // Process ONLY DVS Receive devices through channel extractor
-    const allDevices = [];
-    
-    dvsDevices.forEach(device => {
-      const enhancedDevice = {
-        id: device.id,
-        name: device.name,
-        maxInputs: device.maxInputs || 1,
-        defaultSampleRate: device.defaultSampleRate || 48000, // Dante typically uses 48kHz
-        hostAPIName: device.hostAPIName || 'Unknown',
-        isDante: true,
-        maxOutputs: device.maxOutputs || 0,
-        defaultLowInputLatency: device.defaultLowInputLatency || 0,
-        defaultHighInputLatency: device.defaultHighInputLatency || 0
-      };
+    // Filter for input devices - include Dante channels and handle cases where maxInputs is undefined
+    const inputDevices = devices.filter(device => {
+      // Check if it's an input device by name, maxInputs, or Dante channels
+      const isInputByName = device.name.toLowerCase().includes('input') || 
+                           device.name.toLowerCase().includes('microphone') ||
+                           device.name.toLowerCase().includes('mic');
+      const isInputByMaxInputs = device.maxInputs && device.maxInputs > 0;
+      const isDanteChannel = device.name.toLowerCase().includes('dvs receive') ||
+                            device.name.toLowerCase().includes('dante');
       
-      // Create virtual devices for DVS Receive devices
-      const virtualDevices = channelExtractor.createVirtualDevices(enhancedDevice);
-      allDevices.push(...virtualDevices);
+      return isInputByName || isInputByMaxInputs || isDanteChannel;
     });
     
-    console.log(`🎵 Created ${allDevices.length} virtual DVS channels`);
+    console.log(`📋 Found ${inputDevices.length} input devices`);
+    
+    // Enhanced device info for debugging
+    const enhancedDevices = inputDevices.map(device => ({
+      id: device.id,
+      name: device.name,
+      maxInputs: device.maxInputs || 1, // Default to 1 if undefined
+      defaultSampleRate: device.defaultSampleRate || 16000, // Default sample rate
+      hostAPIName: device.hostAPIName || 'Unknown',
+      isDante: device.name.toLowerCase().includes('dante') || device.name.toLowerCase().includes('dvs'),
+      maxOutputs: device.maxOutputs || 0,
+      defaultLowInputLatency: device.defaultLowInputLatency || 0,
+      defaultHighInputLatency: device.defaultHighInputLatency || 0
+    }));
     
     res.json({
       success: true,
-      devices: allDevices
+      devices: enhancedDevices
     });
   } catch (error) {
     console.error('❌ Error getting devices:', error);
@@ -276,44 +264,15 @@ app.post('/api/streams/start', (req, res) => {
       });
     }
 
-    let device = null;
+    // Get device info to check supported sample rates
+    const devices = portAudio.getDevices();
+    const device = devices.find(d => d.id === parseInt(deviceId));
     
-    // Check if this is a virtual device
-    if (channelExtractor.isVirtualDevice(parseInt(deviceId))) {
-      const virtualDevice = channelExtractor.getVirtualDevice(parseInt(deviceId));
-      const physicalDeviceId = channelExtractor.getPhysicalDeviceId(parseInt(deviceId));
-      
-      if (!virtualDevice || !physicalDeviceId) {
-        return res.status(400).json({
-          success: false,
-          error: `Virtual device ${deviceId} configuration error`
-        });
-      }
-      
-      // Get the physical device info
-      const devices = portAudio.getDevices();
-      device = devices.find(d => d.id === physicalDeviceId);
-      
-      if (!device) {
-        return res.status(400).json({
-          success: false,
-          error: `Physical device ${physicalDeviceId} not found for virtual device ${deviceId}`
-        });
-      }
-      
-      console.log(`🎵 Virtual device ${deviceId} (${virtualDevice.name}) mapped to physical device ${physicalDeviceId} (${device.name})`);
-      
-    } else {
-      // Regular physical device
-      const devices = portAudio.getDevices();
-      device = devices.find(d => d.id === parseInt(deviceId));
-      
-      if (!device) {
-        return res.status(400).json({
-          success: false,
-          error: `Device ${deviceId} not found`
-        });
-      }
+    if (!device) {
+      return res.status(400).json({
+        success: false,
+        error: `Device ${deviceId} not found`
+      });
     }
 
     console.log(`🎤 Device info:`, {
@@ -323,10 +282,8 @@ app.post('/api/streams/start', (req, res) => {
       maxInputs: device.maxInputs
     });
 
-    // Try different sample rates - prioritize 24kHz for virtual devices (STT compatibility)
-    const sampleRates = channelExtractor.isVirtualDevice(parseInt(deviceId)) 
-      ? [24000, device.defaultSampleRate, 48000, 44100, 16000]  // Virtual devices: 24kHz first
-      : [device.defaultSampleRate, 44100, 48000, 16000, 24000]; // Physical devices: default first
+    // Try different sample rates - start with device's default
+    const sampleRates = [device.defaultSampleRate, 44100, 48000, 16000, 24000];
     let audioStream = null;
     let usedSampleRate = null;
 
@@ -334,15 +291,11 @@ app.post('/api/streams/start', (req, res) => {
       try {
         console.log(`🎤 Trying sample rate: ${sampleRate}`);
         
-        // For virtual devices, we need stereo (2 channels) to extract left/right
-        // For physical devices, use their natural channel count
-        const inChannels = channelExtractor.isVirtualDevice(parseInt(deviceId)) ? 2 : 1;
-        
         audioStream = portAudio.AudioIO({
-          inChannels: inChannels,
+          inChannels: 1,
           outChannels: 0,
           inOptions: {
-            channelCount: inChannels,
+            channelCount: 1,
             sampleFormat: portAudio.SampleFormatInt16,
             sampleRate: sampleRate,
             deviceId: parseInt(deviceId)
@@ -366,15 +319,10 @@ app.post('/api/streams/start', (req, res) => {
       });
     }
 
-    // Store stream reference with virtual device mapping
+    // Store stream reference
     activeStreams.set(streamId, {
       stream: audioStream,
       deviceId: deviceId,
-      physicalDeviceId: channelExtractor.isVirtualDevice(parseInt(deviceId)) ? 
-                       channelExtractor.getPhysicalDeviceId(parseInt(deviceId)) : 
-                       parseInt(deviceId),
-      isVirtualDevice: channelExtractor.isVirtualDevice(parseInt(deviceId)),
-      virtualDeviceId: channelExtractor.isVirtualDevice(parseInt(deviceId)) ? parseInt(deviceId) : null,
       startTime: Date.now(),
       sampleRate: usedSampleRate
     });
@@ -441,24 +389,12 @@ app.post('/api/streams/stop', (req, res) => {
 });
 
 app.get('/api/streams/status', (req, res) => {
-  const streams = Array.from(activeStreams.entries()).map(([streamId, data]) => {
-    const streamInfo = {
-      streamId,
-      deviceId: data.deviceId,
-      startTime: data.startTime,
-      isActive: streamStates.get(streamId) === 'running' || streamStates.get(streamId) === 'created'
-    };
-    
-    // Add virtual device information if applicable
-    if (data.isVirtualDevice) {
-      const virtualDevice = channelExtractor.getVirtualDevice(data.virtualDeviceId);
-      streamInfo.virtualDeviceName = virtualDevice ? virtualDevice.name : 'Unknown';
-      streamInfo.physicalDeviceId = data.physicalDeviceId;
-      streamInfo.channelType = channelExtractor.getChannelType(data.virtualDeviceId);
-    }
-    
-    return streamInfo;
-  });
+  const streams = Array.from(activeStreams.entries()).map(([streamId, data]) => ({
+    streamId,
+    deviceId: data.deviceId,
+    startTime: data.startTime,
+    isActive: streamStates.get(streamId) === 'running' || streamStates.get(streamId) === 'created'
+  }));
 
   res.json({
     success: true,
@@ -490,28 +426,16 @@ wss.on('connection', (ws) => {
         // Set up audio data handler for this client
         streamData.stream.on('data', (audioData) => {
           if (ws.readyState === WebSocket.OPEN) {
-            let processedAudioData = audioData;
-            
-            // If this is a virtual device, extract the appropriate channel
-            if (streamData.isVirtualDevice && streamData.virtualDeviceId) {
-              const extractedChannel = channelExtractor.processAudioForVirtualDevice(audioData, streamData.virtualDeviceId);
-              if (extractedChannel) {
-                processedAudioData = extractedChannel;
-                console.log(`🎵 Extracted ${channelExtractor.getChannelType(streamData.virtualDeviceId)} channel for virtual device ${streamData.virtualDeviceId}, samples: ${extractedChannel.length}`);
-              }
-            }
-            
             // Debug: Check audio levels
-            const maxValue = Math.max(...processedAudioData);
-            const avgValue = processedAudioData.reduce((sum, val) => sum + Math.abs(val), 0) / processedAudioData.length;
+            const maxValue = Math.max(...audioData);
+            const avgValue = audioData.reduce((sum, val) => sum + Math.abs(val), 0) / audioData.length;
             
-            // Log audio levels every 10 chunks (much more frequent for testing)
+            // Log audio levels every 100 chunks
             if (!streamData.debugCounter) streamData.debugCounter = 0;
             streamData.debugCounter++;
             
-            if (streamData.debugCounter % 10 === 0) {
-              const deviceType = streamData.isVirtualDevice ? 'Virtual' : 'Physical';
-              console.log(`🎤 Stream ${streamId} (${deviceType}) - Audio levels: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${processedAudioData.length}`);
+            if (streamData.debugCounter % 100 === 0) {
+              console.log(`🎤 Stream ${streamId} - Audio levels: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${audioData.length}`);
               
               // If we're getting silence, log a warning
               if (maxValue === 0) {
@@ -519,11 +443,11 @@ wss.on('connection', (ws) => {
               }
             }
             
-            // Send the processed audio data
+            // Send the raw Int16 audio data directly
             ws.send(JSON.stringify({
               type: 'audio',
               streamId,
-              data: Buffer.from(processedAudioData.buffer).toString('base64'),
+              data: Buffer.from(audioData.buffer).toString('base64'),
               timestamp: Date.now()
             }));
           }
@@ -578,38 +502,6 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     activeStreams: activeStreams.size
   });
-});
-
-// Debug endpoint to view virtual device mappings
-app.get('/api/debug/virtual-devices', (req, res) => {
-  try {
-    const virtualDevices = channelExtractor.getVirtualDevices();
-    const physicalToVirtualMap = Array.from(channelExtractor.physicalToVirtualMap.entries()).map(([physicalId, virtualIds]) => ({
-      physicalDeviceId: physicalId,
-      virtualDeviceIds: virtualIds,
-      virtualDevices: virtualIds.map(vid => {
-        const vd = channelExtractor.getVirtualDevice(vid);
-        return {
-          id: vid,
-          name: vd ? vd.name : 'Unknown',
-          channel: vd ? vd.channel : 'Unknown'
-        };
-      })
-    }));
-
-    res.json({
-      success: true,
-      virtualDevices: virtualDevices,
-      physicalToVirtualMap: physicalToVirtualMap,
-      totalVirtualDevices: virtualDevices.length
-    });
-  } catch (error) {
-    console.error('❌ Error getting virtual device debug info:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
 });
 
 // Start the server
