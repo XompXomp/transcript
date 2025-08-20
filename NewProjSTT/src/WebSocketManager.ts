@@ -156,15 +156,14 @@ export class WebSocketManager {
         }
       }
       
-      // Create audio message in the format Unmute STT expects (FLOAT values, not int16)
+      // The STT server expects a MessagePack-encoded message with structure: { type: 'Audio', pcm: [...] }
+      // Match the working implementation from format.txt
       const audioMessage = {
         type: 'Audio',
-        pcm: audioData  // Float32 values, not int16
+        pcm: Array.from(audioData) // Convert Float32Array to regular array
       };
-      
-      // Send as msgpack-encoded binary data (Unmute STT expects this format)
-      const encoded = msgpack.encode(audioMessage);
-      connection.ws.send(encoded);
+      const encoded = msgpack.encode(audioMessage); // MessagePack encoding
+      connection.ws.send(encoded); // Send encoded message
       connection.lastActivity = Date.now();
       
       return true;
