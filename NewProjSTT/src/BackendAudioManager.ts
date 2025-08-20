@@ -219,22 +219,20 @@ export class BackendAudioManager {
         const avgValue = audioData.reduce((sum, val) => sum + val, 0) / audioData.length;
         console.log(`📤 Mic ${micId} - WDM Audio: Max=${maxValue}, Avg=${avgValue.toFixed(2)}, Samples=${audioData.length}`);
         
-
-        
         // Check if we're receiving silence
         if (maxValue < 10) {
           console.warn(`⚠️ Mic ${micId} - Very low audio levels from WDM! Possible silence.`);
         }
       }
 
-      // Send audio data to STT server via WebSocket manager
-      // Convert Int16Array to Float32Array for WebSocketManager (normalize to -1.0 to 1.0)
+      // Convert Int16Array to Float32Array for WebSocketManager
       const float32Data = new Float32Array(audioData.length);
       for (let i = 0; i < audioData.length; i++) {
         float32Data[i] = audioData[i] / 32768.0; // Convert Int16 to Float32
       }
-      const uint8Data = new Uint8Array(float32Data.buffer);
-      const success = this.webSocketManager.sendAudioData(micId, uint8Data);
+
+      // Send audio data to STT server via WebSocket manager
+      const success = this.webSocketManager.sendAudioData(micId, float32Data);
       if (!success) {
         console.warn(`⚠️ Failed to send WDM audio data to STT for mic ${micId}`);
       }

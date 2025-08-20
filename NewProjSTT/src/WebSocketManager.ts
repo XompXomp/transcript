@@ -8,7 +8,7 @@ interface ConnectionState {
   isAuthenticated: boolean;
   lastActivity: number;
   reconnectAttempts: number;
-  audioQueue: Uint8Array[];
+  audioQueue: Float32Array[];
   debugCounter?: number;
 }
 
@@ -123,7 +123,7 @@ export class WebSocketManager {
   /**
    * Send audio data directly to Unmute STT server
    */
-  sendAudioData(micId: string, audioData: Uint8Array): boolean {
+  sendAudioData(micId: string, audioData: Float32Array): boolean {
     const connection = this.connections.get(micId);
     if (!connection) {
       console.error(`No connection found for mic ${micId}`);
@@ -139,22 +139,16 @@ export class WebSocketManager {
     }
 
     try {
-      // Convert Uint8Array back to Float32Array (original audio format)
-      const float32Data = new Float32Array(audioData.buffer, audioData.byteOffset, audioData.length / 4);
-      const pcmArray = Array.from(float32Data);
-      
       // Debug: Check if we're sending actual audio data
-      const maxValue = Math.max(...pcmArray.map(Math.abs));
-      const avgValue = pcmArray.reduce((sum, val) => sum + Math.abs(val), 0) / pcmArray.length;
+      const maxValue = Math.max(...audioData.map(Math.abs));
+      const avgValue = audioData.reduce((sum, val) => sum + Math.abs(val), 0) / audioData.length;
       
       // Log audio levels every 100 sends (about every 8 seconds)
       if (!connection.debugCounter) connection.debugCounter = 0;
       connection.debugCounter++;
       
       if (connection.debugCounter % 100 === 0) {
-        console.log(`📤 Mic ${micId} - Sending audio: Max=${maxValue.toFixed(4)}, Avg=${avgValue.toFixed(4)}, Samples=${pcmArray.length}`);
-        
-
+        console.log(`📤 Mic ${micId} - Sending audio: Max=${maxValue.toFixed(4)}, Avg=${avgValue.toFixed(4)}, Samples=${audioData.length}`);
         
         // Check if we're sending silence
         if (maxValue < 0.001) {
@@ -165,7 +159,7 @@ export class WebSocketManager {
       // Create audio message in the format Unmute STT expects (FLOAT values, not int16)
       const audioMessage = {
         type: 'Audio',
-        pcm: pcmArray  // Float32 values, not int16
+        pcm: audioData  // Float32 values, not int16
       };
       
       // Send as msgpack-encoded binary data (Unmute STT expects this format)

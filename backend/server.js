@@ -206,10 +206,29 @@ app.get('/api/devices', (req, res) => {
   try {
     const devices = portAudio.getDevices();
     
-    // ONLY get working DVS Receive Dante Virtual Soundcard devices - filter out everything else
+    // Debug: Show ALL devices first
+    console.log('🔍 ALL devices found by portAudio:');
+    devices.forEach(device => {
+      console.log(`  - ID: ${device.id}, Name: "${device.name}"`);
+    });
+    
+    // Hardcode the exact 8 DVS Receive Dante devices we know exist
+    const expectedDeviceNames = [
+      'DVS Receive  1-2 (Dante Virtual Soundcard)',  // Note: double space after "Receive"
+      'DVS Receive  3-4 (Dante Virtual Soundcard)',  // Note: double space after "Receive"
+      'DVS Receive  5-6 (Dante Virtual Soundcard)',  // Note: double space after "Receive"
+      'DVS Receive  7-8 (Dante Virtual Soundcard)',  // Note: double space after "Receive"
+      'DVS Receive  9-10 (Dante Virtual Soundcard)', // Note: double space after "Receive"
+      'DVS Receive 11-12 (Dante Virtual Soundcard)', // Note: single space after "Receive"
+      'DVS Receive 13-14 (Dante Virtual Soundcard)', // Note: single space after "Receive"
+      'DVS Receive 15-16 (Dante Virtual Soundcard)'  // Note: single space after "Receive"
+    ];
+    
+    // Find only the exact devices we expect
     const dvsDevices = devices.filter(device => {
-      return device.name.toLowerCase().includes('dvs receive') && 
-             device.name.toLowerCase().includes('dante virtual soundcard');
+      const isMatch = expectedDeviceNames.includes(device.name);
+      console.log(`🔍 Checking "${device.name}" - Match: ${isMatch}`);
+      return isMatch;
     });
     
     console.log(`📋 Found ${dvsDevices.length} DVS Receive physical devices`);
@@ -334,18 +353,16 @@ app.post('/api/streams/start', (req, res) => {
       try {
         console.log(`🎤 Trying sample rate: ${sampleRate}`);
         
-        // For virtual devices, we need stereo (2 channels) to extract left/right
-        // For physical devices, use their natural channel count
-        const inChannels = channelExtractor.isVirtualDevice(parseInt(deviceId)) ? 2 : 1;
-        
         audioStream = portAudio.AudioIO({
-          inChannels: inChannels,
+          inChannels: 1,
           outChannels: 0,
           inOptions: {
-            channelCount: inChannels,
+            channelCount: 1,
             sampleFormat: portAudio.SampleFormatInt16,
             sampleRate: sampleRate,
-            deviceId: parseInt(deviceId)
+            deviceId: channelExtractor.isVirtualDevice(parseInt(deviceId)) ? 
+                     channelExtractor.getPhysicalDeviceId(parseInt(deviceId)) : 
+                     parseInt(deviceId)
           }
         });
 
